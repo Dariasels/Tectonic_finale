@@ -15,7 +15,7 @@ _TBD._
 | F-1 | _TBD_ | | |
 
 ## 4. Non-functional requirements
-- Demo-ready within the hackathon time limit; the happy path must work end to end.
+- Time budget: 8 hours to build. Demo-ready by the end; the happy path must work end to end.
 - Runs locally with two commands (see README.md).
 
 ## 5. Tech stack
@@ -29,6 +29,7 @@ _TBD._
 
 ## 7. Open questions
 - What is the problem, and how is it judged?
+- DEPLOYMENT: ask organizers on day one whether a live URL is required or a local demo is fine. If a URL is required, set up hosting early (Vercel frontend + Render backend).
 
 ## 8. Decisions log
 | Date | Decision | Reason |
