@@ -1,7 +1,7 @@
 # Requirements
 
 Living document. Claude updates it whenever scope, decisions, or status change.
-Last updated: 2026-10-19 (pre-hackathon setup)
+Last updated: 2026-10-19 (prep complete, waiting for problem statement)
 
 ## 1. Problem statement
 _TBD: provided on hackathon day._
@@ -38,4 +38,5 @@ _TBD._
 
 ## 9. Status
 - [x] Scaffold: frontend, backend, health check wired through the proxy
+- [x] Prep: CLAUDE.md, dev.sh, backend/.env.example, subagents (reviewer, tester, researcher, demo-prep)
 - [ ] Requirements captured from problem statement
