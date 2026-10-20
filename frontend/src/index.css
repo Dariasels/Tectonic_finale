@@ -34,7 +34,8 @@ body { margin: 0; background: var(--page); color: var(--main); font-size: 15px; 
 :focus-visible { outline: 3px solid #ff8b4a; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 
-/* Optional soft light green page background (light mode only) */
-@media not (prefers-color-scheme: dark) {
-  :root[data-bg="green"] { --page: #eef6f0; --soft: #e2efe6; --line: #d7e5db; }
+/* Optional soft light green page background: the colours are also set from JavaScript (theme.js) */
+:root[data-bg="green"] { --page: #e2f2e7; --soft: #d3e9da; --line: #c2dac9; }
+@media (prefers-color-scheme: dark) {
+  :root[data-bg="green"] { --page: #0f0e1a; --soft: #221f3d; --line: #2c2850; }
 }
