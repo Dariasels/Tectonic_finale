@@ -79,6 +79,25 @@ class Resolution(BaseModel):
     doc_id: Optional[str] = Field(default=None, max_length=10)
 
 
+class ProfileIn(BaseModel):
+    user_id: str = Field(pattern=r"^P\d{5}$")
+    personal_tools: Optional[list[str]] = Field(default=None, max_length=6)
+    team_tools: Optional[list[str]] = Field(default=None, max_length=6)
+    signals: Optional[dict[str, bool]] = None
+    answers: Optional[dict[str, str]] = None
+
+
+class EventIn(BaseModel):
+    user_id: str = Field(pattern=r"^P\d{5}$")
+    source: str = Field(max_length=20)
+    title: str = Field(max_length=200)
+    text: str = Field(min_length=1, max_length=5000)
+    topic_id: Optional[str] = Field(default=None, max_length=40)
+    country: Optional[str] = Field(default=None, max_length=3)
+    client: Optional[str] = Field(default=None, max_length=4)
+    key_value: str = Field(default="", max_length=100)
+
+
 class Policy(BaseModel):
     auto: Optional[bool] = None
     min_new_docs: Optional[int] = Field(default=None, ge=1, le=10000)
@@ -132,7 +151,9 @@ def add_document(b: NewDoc):
     e = eng()
     payload = b.model_dump()
     payload["template"] = {} if b.template else None
-    return call(e.ingest, payload, b.user_id)
+    res = call(e.ingest, payload, b.user_id)
+    res["warnings"] = e.tool_warnings(e.persons.team_id[b.user_id], b.source)
+    return res
 
 
 @app.post("/api/documents/{doc_id}/edit")
@@ -218,6 +239,38 @@ def scale():
             "avg_ingest_ms": round(sum(ms) / len(ms), 1) if ms else None,
             "speedup": round(e.stats["full_rebuild_s"] * 1000 / e.stats["last_ingest_ms"]) if e.stats.get("last_ingest_ms") else None,
             "model_auc_cv": round(e.cv_auc, 3), "note": "All data is simulated."}
+
+
+@app.get("/api/profile")
+def get_profile(user_id: str = UID):
+    return call(eng().profile, user_id)
+
+
+@app.post("/api/profile")
+def post_profile(b: ProfileIn):
+    return call(eng().set_profile, b.user_id, b.personal_tools, b.signals, b.team_tools, b.answers)
+
+
+@app.get("/api/tools/status")
+def tools_status(user_id: str = UID):
+    return call(eng().tools_status, user_id)
+
+
+@app.post("/api/events/document")
+def document_event(b: EventIn):
+    """Simulated webhook from a connected tool: capture metadata and score immediately."""
+    payload = b.model_dump(exclude={"user_id"})
+    return call(eng().ingest_event, b.user_id, payload)
+
+
+@app.get("/api/documents/{doc_id}/metadata")
+def document_metadata(doc_id: str, user_id: str = UID):
+    e = eng()
+    if doc_id not in e.docs.index:
+        raise HTTPException(404, "unknown document")
+    if not e.can_see(user_id, e.docs.loc[doc_id]):
+        raise HTTPException(403, "no access to this document")
+    return e.doc_metadata(doc_id)
 
 
 @app.get("/api/demo/questions")

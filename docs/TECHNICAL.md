@@ -35,6 +35,11 @@ All data is simulated: 10,261 people, 26 countries, 935 teams, ~9,600 documents 
 | GET | /api/risks?country= | topics with <= 1 active expert |
 | GET | /api/model/status, POST /model/retrain, POST /model/settings | retraining policy and manual retrain |
 | GET | /api/scale | people/documents/edges, full rebuild seconds, last ingest ms, speed-up |
+| GET/POST | /api/profile | sign-in profile: team tools (team lead only, 403 otherwise), personal tools, opt-in signals, survey answers (`find`, `frequency`, `templates`, `versions`); switching a signal off updates expertise immediately |
+| GET | /api/tools/status | tools connected for the user's team, adoption across all teams, teams without an official source |
+| POST | /api/events/document | simulated webhook from a connected tool: metadata captured and scored at once; `status: ignored` if the tool is not connected for the team |
+| GET | /api/documents/{id}/metadata | the metadata that is kept (source, title, author, team, country, language, topic, version, date, access, stated value) |
+| GET | /api/demo/questions | 74 example questions per category with the persona that asks them |
 | GET | /api/demo/samples, POST /api/demo/reset | ready-made uploads for the demo; reset state (takes ~10 s) |
 
 ### Search response (abridged)
@@ -52,6 +57,9 @@ All data is simulated: 10,261 people, 26 countries, 935 teams, ~9,600 documents 
  "timings_ms": 90}
 ```
 `reasons[].sign`: +1 good, -1 bad, 0 info. `ask_expert` is true when nothing in scope scores 45 or more.
+
+## 4b. Sign-in and connected tools
+First visit shows a 3-step sign-in: pick a colleague (demo, no password) -> questions and tools (team tools editable by team leads only; survey asks the questions the interview left open: how often documents are made, templates, how the current version is known) -> privacy (opt-in signals) and simulated connect buttons. `?demo` in the URL skips the sign-in. Everything can be changed later under Connected tools. A team without SharePoint or GitHub gets a warning that its knowledge stays invisible; an upload from a tool that is not connected is ignored (event) or warned about (upload form).
 
 ## 5. UI screens (suggested, near-invisible by default)
 1. **Search**: one box; result cards with colour badge, source icon, "why this score" expander (reasons + contributions), conflict banner, "who knows" panel with country flags, shortcut chip on top, "this helped" button on expert/document, confirm/flag.

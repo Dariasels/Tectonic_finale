@@ -89,6 +89,7 @@ _To be filled after the interview and scope decision._
 - [x] Mock generator `backend/engine/seed_org.py` (10.3k people, 26 countries, 935 teams, 9.6k docs, 6 sources, 84k edges, ACL, signals)
 - [x] Engine ported into `backend/engine/` (core, queries, ingest, heroes) behind FastAPI; endpoints in docs/TECHNICAL.md; scenarios: parental leave BE, pension BE, Nike; ingest 40 ms vs rebuild 6 s
 - [x] Basic React UI (Search, Approvals, Add document, Organisation, Model & scale) with a user switcher; deep link /?q=... runs a search. To be restyled.
+- [x] Sign-in wizard with survey + Connected tools screen; document events captured as metadata at once (simulated webhook); Graphlas 2.0 styling
 - [ ] React UI polish (after the team answers the UI questions)
 - [ ] Aikido baseline scan (early) and fix round (before 15:00)
 - [ ] Pitch (ppt/pdf, 3 min) and demo fallback

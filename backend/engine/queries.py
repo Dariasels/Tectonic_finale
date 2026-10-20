@@ -365,6 +365,7 @@ class QueryMixin:
         return {"team_id": tid, "name": self.teams.name[tid],
                 "lead": self.person_card(self.teams.lead_id[tid]) if self.teams.lead_id[tid] else None,
                 "has_lead": bool(self.teams.lead_id[tid]), **self._health(g),
+                "tools": sorted(self.team_tools.get(tid, [])), "warnings": self.tool_warnings(tid),
                 "sources": g.source.value_counts().to_dict(),
                 "worst_documents": [{"doc_id": r.doc_id, "title": r.title, "source": r.source, "trust": round(float(r.t), 1)}
                                     for r in worst.itertuples()],

@@ -2,9 +2,10 @@ from .core import CoreEngine, badge, _read
 from .heroes import inject_heroes
 from .ingest import IngestMixin
 from .queries import QueryMixin
+from .tools import ToolsMixin
 
 
-class TrustEngine(IngestMixin, QueryMixin, CoreEngine):
+class TrustEngine(ToolsMixin, IngestMixin, QueryMixin, CoreEngine):
     def __init__(self):
         from .seed_org import DATA_DIR, main as generate
         if not (DATA_DIR / "documents.csv").exists():      # data is git-ignored: create the simulated data on first start
@@ -15,6 +16,7 @@ class TrustEngine(IngestMixin, QueryMixin, CoreEngine):
         self._init_runtime()
         super().__init__({k: v for k, v in tables.items() if k != "_heroes"})
         self.last_train_wall = None
+        self._init_tools()
         self._seed_resolutions()
 
     @staticmethod

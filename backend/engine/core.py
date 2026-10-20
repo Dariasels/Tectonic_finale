@@ -54,6 +54,7 @@ class CoreEngine:
     def __init__(self, tables=None):
         self.lock = threading.RLock()
         self.stats = {}
+        self.person_prefs = {}                           # person_id -> tools, signal consent, survey answers
         self.votes = {}                                  # doc_id -> {"confirm": n, "flag": n}
         self.extra_labels = {}                           # doc_id -> 0/1 from approvals, rejections, confirmations
         self.res_bonus = {}                              # (expertise key, person) -> bonus from confirmed contacts
@@ -139,10 +140,21 @@ class CoreEngine:
         """Expertise per (key = topic or customer) from daily signals; PageRank-style credit via TrustRank."""
         e = self.edges
         d = self.docs
+        no_signals = set(self.persons.index[~self.persons.opt_in_signals])
+        kind = {"ATTENDED": "meetings", "COMMITTED": "commits", "COMPLETED": "trainings", "INTERACTED_WITH": "customers"}
+
+        def allowed(pid, typ):                           # personal signals are opt-in and can be switched off at any time
+            k = kind.get(typ)
+            if k is None:
+                return True
+            pr = self.person_prefs.get(pid)
+            return bool(pr["signals"].get(k, False)) if pr else pid not in no_signals
+
         key_of = ("topic:" + d.topic_id).to_dict()
         ckey_of = d.client.map(lambda c: f"client:{c}" if c else "").to_dict()
         rows = []
         sig = e[e.type.isin(["AUTHORED", "APPROVED", "REVIEWS", "ATTENDED", "COMMITTED"])]
+        sig = sig[[allowed(s, t) for s, t in zip(sig.source, sig.type)]]
         for typ, src, tgt, w in zip(sig.type, sig.source, sig.target, sig.weight):
             if tgt not in key_of:
                 continue
@@ -156,8 +168,10 @@ class CoreEngine:
             if ckey_of[tgt]:
                 rows.append((src, ckey_of[tgt], wt))
         comp = e[e.type == "COMPLETED"]
+        comp = comp[[allowed(s, "COMPLETED") for s in comp.source]]
         rows += [(s, "topic:" + t, EXPERT_W["COMPLETED"]) for s, t in zip(comp.source, comp.target)]
         ic = e[e.type == "INTERACTED_WITH"]
+        ic = ic[[allowed(s, "INTERACTED_WITH") for s in ic.source]]
         rows += [(s, "client:" + c, min(4.0, 0.06 * w)) for s, c, w in zip(ic.source, ic.target, ic.weight)]
         self.interactions = {(f"client:{c}", s): w for s, c, w in zip(ic.source, ic.target, ic.weight)}
         self.trainings = {("topic:" + t, s) for s, t in zip(comp.source, comp.target)}
