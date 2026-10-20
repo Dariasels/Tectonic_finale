@@ -192,7 +192,7 @@ export default function Search() {
         <Button type="submit" className="px-5">Search</Button>
       </form>
       <div className="flex flex-wrap gap-2">
-        {FEATURED.map((ex) => <button key={ex} onClick={() => { setQ(ex); run(ex) }} className="rounded-full bg-surface px-3 py-1 text-sm text-muted ring-1 ring-line hover:bg-soft">{ex}</button>)}
+        {FEATURED.map((ex) => <button key={ex} onClick={() => { setQ(ex); run(ex) }} className="rounded-full bg-soft px-3 py-1 text-sm text-main hover:bg-line">{ex}</button>)}
         {library.length > 0 && <button onClick={() => setShowLib(!showLib)} className="rounded-full px-3 py-1 text-sm font-medium text-accent hover:underline">{showLib ? 'Hide' : `More example questions (${library.length})`}</button>}
       </div>
       <div className="flex flex-wrap gap-4 text-sm">

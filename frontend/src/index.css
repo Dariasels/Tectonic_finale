@@ -3,7 +3,7 @@
 /* Graphlas 2.0 design tokens */
 :root {
   --navy: #17104a; --orange: #ff8b4a; --red: #f0343c; --magenta: #b3308f; --purple: #7b2fbe; --ink: #0f0e1a;
-  --page: #ffffff; --surface: #ffffff; --main: #1b1633; --muted: #6b6585; --line: #e6e1ee; --soft: #f4f1f8;
+  --page: #ffffff; --surface: #ffffff; --main: #1b1633; --muted: #6b6585; --line: #e6e1ee; --soft: #fdeef3;
   --accent: #7b2fbe;
   --ok: #1e9e5a; --warn: #e0a800; --bad: #d63031;
   --ok-text: #137a45; --ok-bg: #e7f6ee; --warn-text: #7a5c00; --warn-bg: #fff6d6; --bad-text: #b02325; --bad-bg: #fdecec;
