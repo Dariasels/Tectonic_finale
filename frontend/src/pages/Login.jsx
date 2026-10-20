@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Check, Lock } from 'lucide-react'
 import { api, errText } from '../api'
 import { Header } from '../Header'
+import { getConnections } from '../connections'
 import { useUser } from '../user'
 import { Button, Card, ErrorBox, SourceChip } from '../ui'
 
@@ -42,7 +43,8 @@ export default function Login({ onDone }) {
   const [personal, setPersonal] = useState([])
   const [team, setTeam] = useState([])
   const [signals, setSignals] = useState({})
-  const [connected, setConnected] = useState({})
+  const [connected, setConnected] = useState(Object.fromEntries(getConnections().map((c) => [c, true])))
+  const linkedAccounts = getConnections()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -55,9 +57,9 @@ export default function Login({ onDone }) {
         const p = await api.profile(pick)
         setProfile(p)
         setAnswers(p.answers ?? {})
-        setPersonal(p.personal_tools.filter((t) => t.enabled).map((t) => t.source))
+        setPersonal([...new Set([...p.personal_tools.filter((t) => t.enabled).map((t) => t.source), ...(linkedAccounts.includes('Notion') ? ['Notion'] : [])])])
         setTeam(p.team_tools.filter((t) => t.enabled).map((t) => t.source))
-        setSignals(Object.fromEntries(p.signals.map((s) => [s.key, s.enabled])))
+        setSignals({ ...Object.fromEntries(p.signals.map((s) => [s.key, s.enabled])), ...(linkedAccounts.includes('GitHub') ? { commits: true } : {}), ...(linkedAccounts.includes('Teams') ? { meetings: true } : {}) })
         setStep(2)
       } catch (e) { setError(errText(e)) }
     } else setStep(step + 1)
@@ -66,7 +68,7 @@ export default function Login({ onDone }) {
   const finish = async () => {
     setBusy(true); setError('')
     try {
-      const body = { user_id: pick, personal_tools: personal, signals, answers }
+      const body = { user_id: pick, personal_tools: personal, signals, answers, connections: linkedAccounts }
       if (profile.can_edit_team) body.team_tools = team
       await api.saveProfile(body)
       const person = users.find((u) => u.person_id === pick)
@@ -144,6 +146,12 @@ export default function Login({ onDone }) {
               ))}
               <p className="text-xs text-muted">What is kept: the title, tool, author, team, country, dates, version and access rights of a document, plus what is needed to score it. Documents you may not see are never shown to others.</p>
             </Card>
+            {linkedAccounts.length > 0 && (
+              <Card className="space-y-1">
+                <h3 className="font-semibold">Accounts you linked on the first page</h3>
+                <p className="text-sm text-muted">{linkedAccounts.join(', ')}. Linking them switched on what they read (shown below), and you can change that.</p>
+              </Card>
+            )}
             <Card className="space-y-3">
               <h3 className="font-semibold">Connect your tools</h3>
               <p className="text-sm text-muted">In this demo the connections are simulated. In production this is where each tool asks for permission.</p>

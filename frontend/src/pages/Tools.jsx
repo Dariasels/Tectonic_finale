@@ -45,6 +45,19 @@ export default function Tools() {
       {p.warnings.map((w) => <div key={w} className="rounded-xl bg-warnbg p-3 text-sm text-warntext ring-1 ring-warn/40">{w}</div>)}
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="space-y-3 lg:col-span-2">
+          <h3 className="font-semibold">Your linked accounts</h3>
+          <p className="text-xs text-muted">Linking an account is your consent for what it reads. Unlinking stops it at once and updates the expertise scores.</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {p.connections.map((c) => (
+              <label key={c.provider} className="flex cursor-pointer items-start gap-3 rounded-lg border border-line p-2.5 text-sm">
+                <input type="checkbox" className="mt-1 h-4 w-4" checked={c.connected}
+                  onChange={(e) => save({ connections: e.target.checked ? [...p.connections.filter((x) => x.connected).map((x) => x.provider), c.provider] : p.connections.filter((x) => x.connected && x.provider !== c.provider).map((x) => x.provider) }, e.target.checked ? `${c.label} linked.` : `${c.label} unlinked.`)} />
+                <span><b>{c.label}</b><span className="block text-xs text-muted">Reads: {c.reads.join('; ')}.</span><span className="block text-xs text-muted">Never: {c.never.join('; ')}.</span></span>
+              </label>
+            ))}
+          </div>
+        </Card>
         <Card className="space-y-3">
           <h3 className="font-semibold">Tools of {p.team.name}</h3>
           <p className="text-xs text-muted">{p.can_edit_team ? 'You are a team lead: you decide which tools count for this team.' : 'Only a team lead (or higher) can change this. The server checks it.'}</p>

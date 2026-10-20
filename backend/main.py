@@ -72,6 +72,7 @@ class ProfileIn(BaseModel):
     team_tools: Optional[list[str]] = Field(default=None, max_length=6)
     signals: Optional[dict[str, bool]] = None
     answers: Optional[dict[str, str]] = None
+    connections: Optional[list[str]] = Field(default=None, max_length=5)
 
 
 class DocEvent(BaseModel):
@@ -235,7 +236,16 @@ def get_profile(user_id: str = UID):
 
 @app.post("/api/profile")
 def post_profile(b: ProfileIn):
-    return call(eng().set_profile, b.user_id, b.personal_tools, b.signals, b.team_tools, b.answers)
+    return call(eng().set_profile, b.user_id, b.personal_tools, b.signals, b.team_tools, b.answers, b.connections)
+
+
+@app.get("/api/auth/providers")
+def auth_providers():
+    """Accounts that can be linked, with what is read and what never is (shown on the consent screen).
+    The OAuth step itself is simulated in this proof of concept."""
+    from engine.tools import PROVIDERS
+    return [{"provider": k, "label": v["label"], "reads": v["reads"], "never": v["never"], "mode": "simulated"}
+            for k, v in PROVIDERS.items()]
 
 
 @app.get("/api/tools/status")

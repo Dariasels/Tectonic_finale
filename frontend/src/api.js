@@ -12,6 +12,7 @@ export const api = {
   decide: (id, user_id, decision) => http.post(`/approvals/${id}/decision`, { user_id, decision }).then((r) => r.data),
   resolve: (body) => http.post('/resolutions', body).then((r) => r.data),
   questions: () => http.get('/demo/questions').then((r) => r.data),
+  providers: () => http.get('/auth/providers').then((r) => r.data),
   profile: (user_id) => http.get('/profile', { params: { user_id } }).then((r) => r.data),
   saveProfile: (body) => http.post('/profile', body).then((r) => r.data),
   toolsStatus: (user_id) => http.get('/tools/status', { params: { user_id } }).then((r) => r.data),

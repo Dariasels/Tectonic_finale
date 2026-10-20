@@ -14,6 +14,19 @@ ANSWER_KEYS = {"find": ["ask a colleague", "search in Teams", "search SharePoint
                "versions": ["file name", "folder", "ask someone", "I do not know"]}
 LEAD_LEVELS = ("Team Lead", "Head", "Lead")
 
+# Accounts a person can link. `reads` and `never` are shown on the consent screen (one source of truth).
+PROVIDERS = {
+    "GitHub": {"label": "GitHub", "signal": "commits", "personal_tool": None,
+               "reads": ["Which repositories and folders you work in", "Commit counts and dates", "Pull-request reviews you did", "CODEOWNERS entries"],
+               "never": ["The code itself"]},
+    "Teams": {"label": "Microsoft Teams", "signal": "meetings", "personal_tool": None,
+              "reads": ["Titles and times of meetings you plan or attend", "Links to files saved in channel folders"],
+              "never": ["Chat messages", "Meeting recordings", "File contents"]},
+    "Notion": {"label": "Notion", "signal": None, "personal_tool": "Notion",
+               "reads": ["Titles, owners and edit dates of your pages, as links"],
+               "never": ["Page contents"]},
+}
+
 
 def make_link(source, team, doc_id, author=""):
     """Fake but realistic link into the source tool (the document itself is never copied)."""
@@ -66,13 +79,31 @@ class ToolsMixin:
                 "can_edit_team": self.can_manage(user_id, u.team_id),
                 "personal_tools": [{"source": s, "enabled": s in pr.get("personal_tools", set()), "note": TOOL_NOTE[s]} for s in PERSONAL],
                 "signals": [{"key": k, "label": v, "enabled": bool(sig.get(k, False))} for k, v in SIGNALS.items()],
+                "connections": [{"provider": k, "label": v["label"], "connected": k in pr.get("connections", set()),
+                                 "reads": v["reads"], "never": v["never"]} for k, v in PROVIDERS.items()],
                 "answers": pr.get("answers", {}), "questions": ANSWER_KEYS, "onboarded": user_id in self.onboarded,
                 "warnings": self.tool_warnings(u.team_id)}
 
-    def set_profile(self, user_id, personal_tools=None, signals=None, team_tools=None, answers=None):
+    def set_profile(self, user_id, personal_tools=None, signals=None, team_tools=None, answers=None, connections=None):
         with self.lock:
             u = self.persons.loc[user_id]
             pr = self.person_prefs.setdefault(user_id, {"personal_tools": set(), "signals": {k: bool(u.opt_in_signals) for k in SIGNALS}, "answers": {}})
+            pr.setdefault("connections", set())
+            if connections is not None:
+                if not set(connections) <= set(PROVIDERS):
+                    raise ValueError("unknown provider")
+                signals = dict(signals or {})
+                personal_tools = set(pr["personal_tools"] if personal_tools is None else personal_tools)
+                for k, v in PROVIDERS.items():                  # linking an account is the consent for what it reads
+                    was, now = k in pr["connections"], k in connections
+                    if was == now:
+                        continue
+                    if v["signal"]:
+                        signals[v["signal"]] = now
+                    if v["personal_tool"]:
+                        (personal_tools.add if now else personal_tools.discard)(v["personal_tool"])
+                pr["connections"] = set(connections)
+                personal_tools = sorted(personal_tools)
             if personal_tools is not None:
                 if not set(personal_tools) <= set(PERSONAL):
                     raise ValueError("unknown personal tool")
