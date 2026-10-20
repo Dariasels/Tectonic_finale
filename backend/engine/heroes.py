@@ -120,6 +120,9 @@ def inject_heroes(t, seed=11):
        "cut-off on day 20", "Payroll cut-off. Rule: cut-off on day 20. Standard for all Belgian customers.", True,
        verified=True, version=5, approver=appr)
     new_edges += [("H011", "H013", "LINKS_TO", 1), ("H011", "H012", "SUPERSEDES", 1)]
+    reassigned = nike_docs[:6]                                     # new author: the old approval no longer applies
+    D.loc[D.doc_id.isin(reassigned), "verified"] = False
+    E = E[~((E.type == "APPROVED") & E.target.isin(reassigned))]
     keep = ~D.doc_id.isin(drop_ids)
     D = pd.concat([D[keep], pd.DataFrame(new_docs)], ignore_index=True)
     E = E[~(E.source.isin(drop_ids) | E.target.isin(drop_ids))]
