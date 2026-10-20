@@ -9,14 +9,6 @@
   --ok-text: #137a45; --ok-bg: #e7f6ee; --warn-text: #7a5c00; --warn-bg: #fff6d6; --bad-text: #b02325; --bad-bg: #fdecec;
   --ok-solid: #16794a; --bad-solid: #c42b2c;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page: #0f0e1a; --surface: #1a1830; --main: #f1eef8; --muted: #a9a3c2; --line: #2c2850; --soft: #221f3d;
-    --accent: #c79bff;
-    --ok-text: #5fd39a; --ok-bg: #12301f; --warn-text: #f2c94c; --warn-bg: #3a3010; --bad-text: #ff8a8b; --bad-bg: #3b1618;
-  }
-}
-
 @theme inline {
   --color-navy: var(--navy); --color-orange: var(--orange); --color-red: var(--red);
   --color-magenta: var(--magenta); --color-purple: var(--purple);
@@ -33,9 +25,3 @@ html { font-family: var(--font-sans); }
 body { margin: 0; background: var(--page); color: var(--main); font-size: 15px; line-height: 1.5; }
 :focus-visible { outline: 3px solid #ff8b4a; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
-
-/* Optional soft light green page background: the colours are also set from JavaScript (theme.js) */
-:root[data-bg="green"] { --page: #e2f2e7; --soft: #d3e9da; --line: #c2dac9; }
-@media (prefers-color-scheme: dark) {
-  :root[data-bg="green"] { --page: #0f0e1a; --soft: #221f3d; --line: #2c2850; }
-}

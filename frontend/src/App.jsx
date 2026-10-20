@@ -50,9 +50,9 @@ function Shell({ signOut }) {
         <div className="flex shrink-0 items-center gap-2 text-sm">
           <div className="flex items-center gap-2" role="group" aria-label="Page background">
             <span className="hidden text-xs font-medium text-white min-[900px]:inline">Background</span>
-            {[['white', 'White', '#ffffff'], ['green', 'Light green', '#cfe9d6']].map(([k, label, c]) => (
+            {[['white', 'White', '#ffffff'], ['green', 'Light green', '#cfe9d6'], ['dark', 'Dark', '#1a1830']].map(([k, label, c]) => (
               <button key={k} aria-label={`${label} background`} title={`${label} background`} aria-pressed={bg === k} onClick={() => pickBg(k)}
-                className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold text-[#17104A] ${bg === k ? 'border-white ring-2 ring-[#0F0E1A]/70' : 'border-white/50'}`} style={{ background: c }}>
+                className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold ${k === 'dark' ? 'text-white' : 'text-[#17104A]'} ${bg === k ? 'border-white ring-2 ring-[#0F0E1A]/70' : 'border-white/50'}`} style={{ background: c }}>
                 {bg === k ? '✓' : ''}
               </button>
             ))}
