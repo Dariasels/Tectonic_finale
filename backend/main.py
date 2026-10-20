@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from engine import TrustEngine
@@ -83,6 +84,11 @@ class Policy(BaseModel):
     min_new_docs: Optional[int] = Field(default=None, ge=1, le=10000)
     max_days: Optional[int] = Field(default=None, ge=1, le=90)
     min_gap_hours: Optional[int] = Field(default=None, ge=0, le=168)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/docs")
 
 
 @app.get("/api/health")
