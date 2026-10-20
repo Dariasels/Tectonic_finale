@@ -84,10 +84,15 @@ def test_replaced_document_does_not_penalise_its_successor(eng):
     assert eng.F.conflict_share["H001"] == pytest.approx(len(opp) / (len(live) - 1))
 
 
+SIGNAL_TYPES = {"ATTENDED", "COMMITTED", "COMPLETED", "INTERACTED_WITH"}
+
+
 def expected_raw(e, pid, key):
     ed, d = e.edges, e.docs
     total = 0.0
     for r in ed[ed.source == pid].itertuples():
+        if r.type in SIGNAL_TYPES and not e.persons.opt_in_signals[pid]:      # personal signals are opt-in
+            continue
         if r.type in ("AUTHORED", "APPROVED", "REVIEWS", "ATTENDED", "COMMITTED") and r.target in d.index:
             doc = d.loc[r.target]
             if key not in (f"topic:{doc.topic_id}", f"client:{doc.client}" if doc.client else None):
@@ -109,15 +114,12 @@ def test_expertise_matches_independent_recomputation(eng):
     raw = eng.expert_raw
     rng = np.random.default_rng(5)
     idx = rng.choice(len(raw), 40, replace=False)
-    opted = eng.persons.opt_in_signals
     checked = 0
     for i in idx:
         key, pid = raw.index[i]
-        if not opted[pid]:
-            continue
         assert raw.iloc[i] == pytest.approx(expected_raw(eng, pid, key), rel=1e-6), (pid, key)
         checked += 1
-    assert checked >= 15
+    assert checked == 40
 
 
 def test_expertise_is_normalised_per_key(eng):
@@ -130,7 +132,7 @@ def test_people_who_only_appear_as_listed_get_no_credit(eng):
     listed = set(zip(e[e.type == "LISTED_AS"].source, e[e.type == "LISTED_AS"].target))
     real = e[e.type.isin(["AUTHORED", "APPROVED", "REVIEWS", "ATTENDED", "COMMITTED"])]
     real_pairs = set(zip(real.source, real.target))
-    only = [(p, d) for p, d in listed if (p, d) not in real_pairs][:200]
+    only = sorted((p, d) for p, d in listed if (p, d) not in real_pairs)[:200]
     assert only
     kept = 0
     for p, d in only:
