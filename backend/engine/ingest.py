@@ -9,6 +9,7 @@ from scipy import sparse
 
 from .core import FEATURES, SRC_KEY, badge, EXPERT_WEIGHT
 from .seed_org import REFERENCE_DATE
+from .tools import make_link
 
 DUP_SIM = 0.85            # text similarity above which an upload counts as a duplicate
 UNSURE = 0.25             # |P(unreliable) - 0.5| below this: the model is unsure, ask a human
@@ -26,6 +27,7 @@ class IngestMixin:
         self.retrain_log = []
         self.ingest_ms = []
         self.pending_ids = set()
+        self.event_log = []
         self.seen_votes = set()
 
     # --------------------------------------------------------------- ingestion
@@ -37,9 +39,9 @@ class IngestMixin:
             if author not in self.persons.index:
                 raise KeyError("unknown author")
             title = str(payload.get("title", "")).strip()[:200] or "Untitled"
-            text = str(payload.get("text", "")).strip()[:5000]
-            if not text:
-                raise ValueError("text is required")
+            # only a short extracted fact is kept, never the document itself
+            text = str(payload.get("extract") or payload.get("text") or title).strip()[:300]
+            is_meeting = payload.get("doc_type") == "meeting"
             source = payload.get("source", "SharePoint")
             if source not in SRC_KEY:
                 raise ValueError("unknown source")
@@ -61,7 +63,7 @@ class IngestMixin:
             tkey = f"{topic}|{client}"
             idx = self.topic_rows.get(tkey, np.array([], dtype=int))
             sims = (vec @ self.X[idx].T).toarray().ravel() if len(idx) else np.array([])
-            if len(sims):
+            if len(sims) and not is_meeting:
                 j = int(np.argmax(sims))
                 twin = self.docs.index[idx[j]]
                 if sims[j] >= DUP_SIM and self.docs.key_value[twin] == key_value and self.docs.country[twin] == country:
@@ -76,6 +78,7 @@ class IngestMixin:
                    "last_modified": REFERENCE_DATE, "version": int(payload.get("version", 1)), "source": source,
                    "language": self.countries.language.get(country, "en"), "key_value": key_value, "verified": False,
                    "acl": payload.get("acl") or ("client:" + client if client else "all"), "text": text,
+                   "link": str(payload.get("link") or make_link(source, self.teams.name.get(a.team_id, ""), did, a["name"])),
                    "edited": False, "pending": False}
             grp = self.groups.get((topic, country, client), [])
             diff = [y for y in grp if key_value and self.docs.key_value[y] != key_value and y not in self.superseded_by]
@@ -114,12 +117,14 @@ class IngestMixin:
             # does a human need to look at this? only if it matters
             why = []
             verified_conflict = [y for y in diff if self.docs.verified[y]]
+            if is_meeting:                                   # meetings are signals, never reviewed
+                diff, verified_conflict = [], []
             if verified_conflict:
                 y = verified_conflict[0]
                 why.append(f"Contradicts verified document {y}: '{key_value}' versus '{self.docs.key_value[y]}'")
             elif diff:
                 why.append(f"Contradicts {len(diff)} existing document(s) on the same topic and country")
-            if abs(p - 0.5) < UNSURE:
+            if abs(p - 0.5) < UNSURE and not is_meeting:
                 why.append("The model is unsure about this document")
             if classified and classified["confidence"] < TOPIC_CONF:
                 why.append(f"Topic is unclear (best guess: {classified['topic_name']})")
@@ -157,7 +162,7 @@ class IngestMixin:
                 "document": {"doc_id": d.doc_id, "title": d.title, "key_value": d.key_value, "source": d.source,
                              "topic_name": self.topics.name.get(d.topic_id, d.topic_id), "country": d.country,
                              "trust": round(float(self.trust[d.doc_id]), 1), "badge": badge(float(self.trust[d.doc_id])),
-                             "text": d.text}}
+                             "extract": d.text, "link": d.link}}
 
     def list_approvals(self, user_id, status="pending"):
         return [self.approval_json(a) for a in self.approvals.values()

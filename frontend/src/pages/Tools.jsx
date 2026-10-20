@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, errText } from '../api'
 import { useUser } from '../user'
-import { Button, Card, Chip, ErrorBox, Loading, SourceChip, TrustBadge } from '../ui'
-
-const field = 'w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent'
+import { Card, ErrorBox, Loading, SourceChip } from '../ui'
 
 function Toggle({ checked, onChange, disabled, children }) {
   return (
@@ -19,8 +17,6 @@ export default function Tools() {
   const [status, setStatus] = useState(null)
   const [error, setError] = useState('')
   const [msg, setMsg] = useState('')
-  const [ev, setEv] = useState({ source: 'SharePoint', title: 'Sick leave Belgium update', text: 'Sick leave. Rule: certificate after 2 days.', key_value: 'certificate after 2 days', topic_id: 'sick_leave', country: 'BE' })
-  const [res, setRes] = useState(null)
 
   const load = useCallback(() => {
     if (!user) return
@@ -36,11 +32,6 @@ export default function Tools() {
   }
   const enabled = (list) => list.filter((t) => t.enabled).map((t) => t.source)
 
-  const send = async (e) => {
-    e.preventDefault(); setError(''); setRes(null)
-    try { setRes(await api.sendEvent({ user_id: user.person_id, ...ev })); api.toolsStatus(user.person_id).then(setStatus) }
-    catch (err) { setError(errText(err)) }
-  }
 
   if (!p) return <Loading />
   return (
@@ -94,29 +85,7 @@ export default function Tools() {
         </Card>
       )}
 
-      <Card className="space-y-3">
-        <h3 className="font-semibold">Simulate: a document is uploaded in a connected tool</h3>
-        <p className="text-sm text-muted">In production the tool sends this event itself. The metadata is captured and scored immediately; no one fills in anything.</p>
-        <form onSubmit={send} className="grid gap-2 sm:grid-cols-2">
-          <select className={field} value={ev.source} onChange={(e) => setEv({ ...ev, source: e.target.value })}>{['SharePoint', 'Teams', 'OneDrive', 'Notion', 'GitHub', 'Legacy drive'].map((s) => <option key={s}>{s}</option>)}</select>
-          <input className={field} value={ev.title} maxLength={200} onChange={(e) => setEv({ ...ev, title: e.target.value })} placeholder="Title" required />
-          <input className={`${field} sm:col-span-2`} value={ev.text} maxLength={5000} onChange={(e) => setEv({ ...ev, text: e.target.value })} placeholder="Text" required />
-          <div><Button type="submit">Send event</Button></div>
-        </form>
-        {res && (
-          <div className="space-y-2 rounded-lg bg-soft p-3 text-sm">
-            {res.status === 'ignored' ? <p className="font-medium text-warntext">{res.reason}</p> : (
-              <>
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">Captured: {res.captured}, in {res.timings_ms_total} ms. {res.status === 'pending_approval' ? 'A human check was requested.' : res.status === 'duplicate' ? 'Nothing added.' : 'Published automatically.'}</p>
-                  {res.document && <TrustBadge badge={res.document.badge} score={res.document.trust} />}
-                </div>
-                {res.metadata && <div className="flex flex-wrap gap-1.5">{Object.entries(res.metadata).filter(([k]) => k !== 'doc_id').map(([k, v]) => <Chip key={k}>{k}: {String(v)}</Chip>)}</div>}
-              </>
-            )}
-          </div>
-        )}
-      </Card>
+      <Card><p className="text-sm text-muted">Documents are never uploaded here. When someone plans a Teams meeting or saves a file in a connected tool, the tool sends an event and Graphlas keeps the link and metadata. See <b>Live capture</b> to try it.</p></Card>
     </div>
   )
 }

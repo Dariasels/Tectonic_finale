@@ -12,8 +12,8 @@ All data is simulated: 10,261 people, 26 countries, 935 teams, ~9,600 documents 
 - **ACL**: every document has `acl` (`all`, `dept:HR Advisory`, `client:C01`). Enforced on the server; hidden documents are never returned.
 - **Retraining policy**: a new document or material edit counts 1; cosmetic edit or duplicate counts 0. Retrain at 100 (about 1% of corpus) or after 7 days, never twice within 24 h, with an on/off switch. New documents are scored immediately without retraining.
 
-## 2. The "keep it trusted" loop (what happens on upload)
-`POST /api/documents` -> classify topic (if missing) -> dedupe (text similarity >= 0.85 and same value/country: nothing is added) -> score with the existing model (about 40 ms vs 6 s full rebuild) -> a human is asked ONLY if it contradicts a verified/other document, the model is unsure, or the topic is unclear. Approver = first active person above the author (nobody approves their own work); wrong user gets 403. Approving a conflicting update supersedes the old verified document, which turns red automatically.
+## 2. The "keep it trusted" loop (what happens when a file is saved in a connected tool)
+Documents are never uploaded in the website. `POST /api/events/document` (sent by the tool) -> only the link and metadata are kept, plus one extracted fact -> classify topic (if missing) -> dedupe (text similarity >= 0.85 and same value/country: nothing is added) -> score with the existing model (about 40 ms vs 6 s full rebuild) -> a human is asked ONLY if it contradicts a verified/other document, the model is unsure, or the topic is unclear. Approver = first active person above the author (nobody approves their own work); wrong user gets 403. Approving a conflicting update supersedes the old verified document, which turns red automatically.
 
 ## 3. Demo users
 `GET /api/users` returns personas (ids change if data is regenerated, never hard-code them). Every call that acts as a user takes `user_id` (demo sign-in, no real auth).
@@ -24,7 +24,9 @@ All data is simulated: 10,261 people, 26 countries, 935 teams, ~9,600 documents 
 | GET | /api/users, /api/meta | demo personas; topics, clients, countries, sources |
 | GET | /api/search?q=&user_id=&country=&client= | main search (see shape below) |
 | GET | /api/documents/{id}?user_id= | detail incl. `contributions`, `text` |
-| POST | /api/documents | upload `{user_id,title,text,source,topic_id?,country?,client?,key_value?}` -> `status`: `published` / `pending_approval` / `duplicate`, `classified`, `approval`, `timings_ms` |
+| POST | /api/events/document | simulated webhook: a file was saved in a connected tool. Sends title, link, folder path and optionally one extracted fact; topic, country and customer are worked out from the title and folder. Keeps link + metadata only. `status`: `published` / `pending_approval` / `duplicate` / `ignored` (tool not connected) |
+| POST | /api/events/meeting | simulated webhook: a Teams meeting was planned. The title is dissected (topic, customer, country); no recognised topic or customer = nothing stored; attendees who opted in become expertise signals immediately |
+| GET | /api/events/recent, /api/team/members | feed of captured events; teammates for the meeting simulator |
 | POST | /api/documents/{id}/edit | `{user_id,text?,key_value?}` -> `material`, edit penalty, re-approval if it was verified |
 | POST | /api/documents/{id}/vote | `{user_id,kind: confirm\|flag}` |
 | GET | /api/approvals?user_id=&status= | approvals assigned to this user |
@@ -37,10 +39,9 @@ All data is simulated: 10,261 people, 26 countries, 935 teams, ~9,600 documents 
 | GET | /api/scale | people/documents/edges, full rebuild seconds, last ingest ms, speed-up |
 | GET/POST | /api/profile | sign-in profile: team tools (team lead only, 403 otherwise), personal tools, opt-in signals, survey answers (`find`, `frequency`, `templates`, `versions`); switching a signal off updates expertise immediately |
 | GET | /api/tools/status | tools connected for the user's team, adoption across all teams, teams without an official source |
-| POST | /api/events/document | simulated webhook from a connected tool: metadata captured and scored at once; `status: ignored` if the tool is not connected for the team |
 | GET | /api/documents/{id}/metadata | the metadata that is kept (source, title, author, team, country, language, topic, version, date, access, stated value) |
 | GET | /api/demo/questions | 74 example questions per category with the persona that asks them |
-| GET | /api/demo/samples, POST /api/demo/reset | ready-made uploads for the demo; reset state (takes ~10 s) |
+| GET | /api/demo/presets, POST /api/demo/reset | ready-made events for the demo; reset state (takes ~10 s) |
 
 ### Search response (abridged)
 ```json
@@ -64,7 +65,7 @@ First visit shows a 3-step sign-in: pick a colleague (demo, no password) -> ques
 ## 5. UI screens (suggested, near-invisible by default)
 1. **Search**: one box; result cards with colour badge, source icon, "why this score" expander (reasons + contributions), conflict banner, "who knows" panel with country flags, shortcut chip on top, "this helped" button on expert/document, confirm/flag.
 2. **Approvals inbox** (only for people who have items): card per request with reason, one-click approve/reject (mock Teams card).
-3. **Upload / template**: questionnaire (title, topic, country, customer, valid until, source), result shows published / needs approval / duplicate, with `timings_ms`.
+3. **Live capture**: imitates the events the tools send (Teams meeting planned, file saved in SharePoint/OneDrive/Notion/GitHub...), shows what was read from the title, what was kept (link + metadata), and the instant result.
 4. **Organisation**: Country -> Department -> Team drill-down coloured by `health`, risks list.
 5. **Model and scale**: retraining progress bar (`new_since_train / threshold`), policy switch, rebuild vs ingest timings.
 Theme: Graphlas 2.0 (orange-to-purple header gradient, Montserrat, trust shown as green/yellow/red dots).

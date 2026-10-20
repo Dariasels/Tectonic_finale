@@ -79,6 +79,7 @@ _To be filled after the interview and scope decision._
 | 2026-10-20 | No live URL; demo video in the ppt | Organizers: not required; own devices not allowed |
 | 2026-10-20 | Handover brief postponed (later, nice to have) | Team decision |
 | 2026-10-20 | Product name and look: Graphlas 2.0 (header gradient orange to purple, Montserrat, status dots) | Team styling spec; replaces the yellow-to-blue SD Worx look |
+| 2026-10-20 | Documents are never uploaded in the website; tools send events, we keep link + metadata (Teams meeting titles are dissected) | Team decision: zero unnecessary effort, privacy |
 | 2026-10-20 | `context/` is git-ignored | 55 MB partner PDF should not go in a public repo |
 
 ## 10. Status
@@ -90,6 +91,7 @@ _To be filled after the interview and scope decision._
 - [x] Engine ported into `backend/engine/` (core, queries, ingest, heroes) behind FastAPI; endpoints in docs/TECHNICAL.md; scenarios: parental leave BE, pension BE, Nike; ingest 40 ms vs rebuild 6 s
 - [x] Basic React UI (Search, Approvals, Add document, Organisation, Model & scale) with a user switcher; deep link /?q=... runs a search. To be restyled.
 - [x] Sign-in wizard with survey + Connected tools screen; document events captured as metadata at once (simulated webhook); Graphlas 2.0 styling
+- [x] Live capture replaces Add document: meeting-title dissection and file-saved events (link + metadata only)
 - [ ] React UI polish (after the team answers the UI questions)
 - [ ] Aikido baseline scan (early) and fix round (before 15:00)
 - [ ] Pitch (ppt/pdf, 3 min) and demo fallback

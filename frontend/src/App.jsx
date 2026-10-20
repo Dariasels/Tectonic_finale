@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
-import { Building2, Gauge, Plug, Search as SearchIcon, ShieldCheck, Upload as UploadIcon } from 'lucide-react'
+import { Building2, Gauge, Plug, Radio, Search as SearchIcon, ShieldCheck } from 'lucide-react'
 import clsx from 'clsx'
 import { api } from './api'
 import { UserProvider, useUser } from './user'
 import { Header } from './Header'
 import Login from './pages/Login'
 import Tools from './pages/Tools'
+import Capture from './pages/Capture'
 import Search from './pages/Search'
 import Approvals from './pages/Approvals'
-import Upload from './pages/Upload'
 import Org from './pages/Org'
 import Model from './pages/Model'
 
@@ -23,7 +23,7 @@ function Shell({ signOut }) {
   }, [user])
 
   const nav = [
-    ['/', 'Search', SearchIcon], ['/approvals', 'Approvals', ShieldCheck], ['/upload', 'Add document', UploadIcon],
+    ['/', 'Search', SearchIcon], ['/approvals', 'Approvals', ShieldCheck], ['/capture', 'Live capture', Radio],
     ['/tools', 'Connected tools', Plug], ['/org', 'Organisation', Building2], ['/model', 'Model & scale', Gauge],
   ]
   const options = user && !users.some((u) => u.person_id === user.person_id) ? [user, ...users] : users
@@ -58,7 +58,7 @@ function Shell({ signOut }) {
             <Routes>
               <Route path="/" element={<Search />} />
               <Route path="/approvals" element={<Approvals />} />
-              <Route path="/upload" element={<Upload />} />
+              <Route path="/capture" element={<Capture />} />
               <Route path="/tools" element={<Tools />} />
               <Route path="/org" element={<Org />} />
               <Route path="/model" element={<Model />} />

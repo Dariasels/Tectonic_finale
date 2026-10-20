@@ -40,6 +40,7 @@ export default function Approvals() {
               <p className="text-xs text-muted">{a.author.name} ({a.author.role}) asks you to check</p>
               <h3 className="font-semibold">{a.document.title}</h3>
               <p className="text-lg text-accent">{a.document.key_value}</p>
+              <p className="mt-1 break-all font-mono text-xs text-muted">{a.document.link}</p>
               <div className="mt-1 flex gap-1.5"><Chip>{a.document.source}</Chip><Chip>{a.document.country}</Chip><Chip>{a.document.topic_name}</Chip></div>
             </div>
             <TrustBadge badge={a.document.badge} score={a.document.trust} />

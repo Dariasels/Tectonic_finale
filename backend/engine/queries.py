@@ -167,11 +167,11 @@ class QueryMixin:
                "last_modified": str(d.last_modified.date()), "version": int(d.version),
                "author": self.person_card(d.author_id), "owner": self.person_card(d.owner_id),
                "approved_by": self.person_card(self.approver.get(d.doc_id)),
-               "team": self.teams.name.get(d.team_id, ""), "acl": d.acl,
+               "team": self.teams.name.get(d.team_id, ""), "acl": d.acl, "link": d.link,
                "reasons": [{"sign": s, "text": x} for s, x in self.reasons(d) + notes]}
         if detail:
             out["contributions"] = self.contributions(d.doc_id)
-            out["text"] = d.text
+            out["extract"] = d.text            # one extracted fact; the document itself is never stored
             out["links_in"] = int(self.F.in_degree[d.doc_id])
             out["intrinsic_trust"] = round(float(self.trust[d.doc_id]), 1)
         return out

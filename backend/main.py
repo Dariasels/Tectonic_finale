@@ -41,19 +41,6 @@ def call(fn, *a, **kw):
         raise HTTPException(400, str(e))
 
 
-class NewDoc(BaseModel):
-    user_id: str = Field(pattern=r"^P\d{5}$")
-    title: str = Field(max_length=200)
-    text: str = Field(min_length=1, max_length=5000)
-    source: str = "SharePoint"
-    topic_id: Optional[str] = Field(default=None, max_length=40)
-    country: Optional[str] = Field(default=None, max_length=3)
-    client: Optional[str] = Field(default=None, max_length=4)
-    key_value: str = Field(default="", max_length=100)
-    doc_type: str = Field(default="policy", max_length=20)
-    template: bool = True
-
-
 class EditDoc(BaseModel):
     user_id: str = Field(pattern=r"^P\d{5}$")
     text: Optional[str] = Field(default=None, max_length=5000)
@@ -87,15 +74,25 @@ class ProfileIn(BaseModel):
     answers: Optional[dict[str, str]] = None
 
 
-class EventIn(BaseModel):
+class DocEvent(BaseModel):
+    """A file was saved in a connected tool. Only the link and metadata are sent, never the document."""
     user_id: str = Field(pattern=r"^P\d{5}$")
     source: str = Field(max_length=20)
     title: str = Field(max_length=200)
-    text: str = Field(min_length=1, max_length=5000)
+    link: Optional[str] = Field(default=None, max_length=300, pattern=r"^(https?|file)://")
+    path: Optional[str] = Field(default=None, max_length=300)
+    extract: Optional[str] = Field(default=None, max_length=300)      # one fact read at the source, e.g. "Rule: 17 weeks"
+    key_value: str = Field(default="", max_length=100)
     topic_id: Optional[str] = Field(default=None, max_length=40)
     country: Optional[str] = Field(default=None, max_length=3)
     client: Optional[str] = Field(default=None, max_length=4)
-    key_value: str = Field(default="", max_length=100)
+
+
+class MeetingEvent(BaseModel):
+    user_id: str = Field(pattern=r"^P\d{5}$")
+    title: str = Field(max_length=200)
+    attendees: list[str] = Field(default_factory=list, max_length=40)
+    link: Optional[str] = Field(default=None, max_length=300, pattern=r"^https?://")
 
 
 class Policy(BaseModel):
@@ -144,16 +141,6 @@ def document(doc_id: str, user_id: str = UID):
     if not e.can_see(user_id, d):
         raise HTTPException(403, "no access to this document")
     return e.doc_json(d, detail=True)
-
-
-@app.post("/api/documents")
-def add_document(b: NewDoc):
-    e = eng()
-    payload = b.model_dump()
-    payload["template"] = {} if b.template else None
-    res = call(e.ingest, payload, b.user_id)
-    res["warnings"] = e.tool_warnings(e.persons.team_id[b.user_id], b.source)
-    return res
 
 
 @app.post("/api/documents/{doc_id}/edit")
@@ -257,10 +244,26 @@ def tools_status(user_id: str = UID):
 
 
 @app.post("/api/events/document")
-def document_event(b: EventIn):
-    """Simulated webhook from a connected tool: capture metadata and score immediately."""
+def document_event(b: DocEvent):
+    """Simulated webhook from a connected tool: link and metadata are captured and scored immediately."""
     payload = b.model_dump(exclude={"user_id"})
     return call(eng().ingest_event, b.user_id, payload)
+
+
+@app.post("/api/events/meeting")
+def meeting_event(b: MeetingEvent):
+    """Simulated webhook: a meeting was planned in Teams. The title is dissected; attendance becomes expertise signals."""
+    return call(eng().ingest_meeting, b.user_id, b.model_dump(exclude={"user_id"}))
+
+
+@app.get("/api/events/recent")
+def events_recent():
+    return eng().recent_events()
+
+
+@app.get("/api/team/members")
+def team_members(user_id: str = UID):
+    return call(eng().team_members, user_id)
 
 
 @app.get("/api/documents/{doc_id}/metadata")
@@ -290,27 +293,38 @@ def demo_questions():
     return out
 
 
-@app.get("/api/demo/samples")
-def demo_samples():
-    e = eng()
-    h = e.heroes
-    return [
-        {"name": "Conflicting update of a verified policy (needs approval)", "user_id": h["hr_senior"],
-         "body": {"user_id": h["hr_senior"], "title": "Parental leave Belgium (update)", "source": "SharePoint",
-                  "topic_id": "parental_leave", "country": "BE", "key_value": "18 weeks per parent",
-                  "text": "Parental leave. Rule: 18 weeks per parent. Proposed update."}},
-        {"name": "Duplicate of a known document (nothing added)", "user_id": h["hr_medior"],
-         "body": {"user_id": h["hr_medior"], "title": "Parental leave policy Belgium", "source": "OneDrive",
-                  "topic_id": "parental_leave", "country": "BE", "key_value": "17 weeks per parent",
-                  "text": "Parental leave. Rule: 17 weeks per parent. Valid from 1 September 2026."}},
-        {"name": "No topic given: auto-categorised", "user_id": h["hr_junior"],
-         "body": {"user_id": h["hr_junior"], "title": "New lease rules", "source": "Teams", "country": "BE",
-                  "key_value": "CO2 limit 95 g/km", "text": "Company car policy. Rule: CO2 limit 95 g/km."}},
-        {"name": "New customer document, nothing contradicts it (published automatically)", "user_id": h["be_cs"],
-         "body": {"user_id": h["be_cs"], "title": "Nike payroll cut-off agreement 2026", "source": "SharePoint",
-                  "topic_id": "client_cutoff", "country": "DE", "client": "C01", "key_value": "cut-off on day 14",
-                  "text": "Payroll cut-off agreement. Rule: cut-off on day 14. New German entity."}},
+@app.get("/api/demo/presets")
+def demo_presets():
+    """Ready-made events for the demo. In production the tools send these themselves."""
+    h = eng().heroes
+    docs = [
+        {"name": "Conflicting update saved in SharePoint (needs approval)", "user_id": h["hr_senior"],
+         "body": {"user_id": h["hr_senior"], "source": "SharePoint", "title": "Parental leave Belgium (update)",
+                  "path": "/sites/hr-belgium/Policies/Parental leave Belgium 2026 v5.docx", "key_value": "18 weeks per parent",
+                  "extract": "Parental leave. Rule: 18 weeks per parent. Proposed update."}},
+        {"name": "Same file saved again (duplicate, nothing added)", "user_id": h["hr_medior"],
+         "body": {"user_id": h["hr_medior"], "source": "OneDrive", "title": "Parental leave policy Belgium",
+                  "path": "/personal/hr/Parental leave policy Belgium.docx", "key_value": "17 weeks per parent",
+                  "extract": "Parental leave. Rule: 17 weeks per parent. Valid from 1 September 2026."}},
+        {"name": "File in a Teams channel: topic found from the title", "user_id": h["hr_junior"],
+         "body": {"user_id": h["hr_junior"], "source": "Teams", "title": "New company car lease rules Belgium",
+                  "path": "General/Files/Company car/lease rules.docx", "key_value": "CO2 limit 95 g/km",
+                  "extract": "Company car policy. Rule: CO2 limit 95 g/km."}},
+        {"name": "Customer file, nothing contradicts it (published automatically)", "user_id": h["be_cs"],
+         "body": {"user_id": h["be_cs"], "source": "SharePoint", "title": "Nike payroll cut-off agreement Germany",
+                  "path": "/sites/customer-success/Nike/Payroll cut-off agreement.docx", "country": "DE", "client": "C01",
+                  "topic_id": "client_cutoff", "key_value": "cut-off on day 14",
+                  "extract": "Payroll cut-off agreement. Rule: cut-off on day 14. New German entity."}},
     ]
+    meetings = [
+        {"name": "Nike payroll cut-off review with the Belgian team", "user_id": h["be_cs"],
+         "body": {"user_id": h["be_cs"], "title": "Nike payroll cut-off review with Belgium team"}},
+        {"name": "Weekly build pipeline sync", "user_id": h["hr_senior"],
+         "body": {"user_id": h["hr_senior"], "title": "Weekly build pipeline sync"}},
+        {"name": "Private 1:1 (nothing recognised, nothing stored)", "user_id": h["hr_senior"],
+         "body": {"user_id": h["hr_senior"], "title": "1:1 catch-up"}},
+    ]
+    return {"documents": docs, "meetings": meetings}
 
 
 @app.post("/api/demo/reset")

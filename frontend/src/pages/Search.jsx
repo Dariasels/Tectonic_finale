@@ -50,6 +50,7 @@ function ResultCard({ r, user, intent, onChanged }) {
             {!r.in_scope && <Chip className="bg-badbg text-badtext">other country</Chip>}
           </div>
           <p className="mt-2 text-sm text-muted">Author: <PersonLine p={r.author} /></p>
+          {r.link && <p className="break-all font-mono text-xs text-muted">{r.link}</p>}
           {r.approved_by && <p className="text-sm text-muted">Verified by: <PersonLine p={r.approved_by} /></p>}
         </div>
         <TrustBadge badge={r.badge} score={r.trust} />

@@ -13,6 +13,11 @@ class TrustEngine(ToolsMixin, IngestMixin, QueryMixin, CoreEngine):
         tables = {n: _read(n) for n in ["persons", "teams", "documents", "edges", "feedback", "ground_truth",
                                         "topics", "clients", "countries"]}
         self.heroes = inject_heroes(tables)["_heroes"]
+        from .tools import make_link
+        tn = tables["teams"].set_index("team_id").name
+        pn = tables["persons"].set_index("person_id").name
+        d = tables["documents"]
+        d["link"] = [make_link(s, tn.get(t, ""), i, pn.get(a, "")) for s, t, i, a in zip(d.source, d.team_id, d.doc_id, d.author_id)]
         self._init_runtime()
         super().__init__({k: v for k, v in tables.items() if k != "_heroes"})
         self.last_train_wall = None

@@ -2,6 +2,8 @@
 
 Pitch line: **Find it. Understand it. Trust it. Keep it trusted.** One trust layer over Teams, SharePoint, OneDrive, Notion, GitHub and legacy drives. No migration, no extra documentation work. It also sits behind their existing copilot: the copilot retrieves, we score and explain.
 
+**Principle: nobody uploads anything.** Tools send events (a Teams meeting is planned; a file is saved in a Teams folder, SharePoint, OneDrive, Notion or GitHub). We keep the LINK and metadata, never the document, plus one extracted fact where needed. Meeting titles are dissected for topic, customer and country; meetings without a recognised topic are not stored.
+
 ## 1. Architecture
 ```
 Sources (mock adapters)        Ingest                Graph + ML                 API / UI
