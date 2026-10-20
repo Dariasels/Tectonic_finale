@@ -34,10 +34,10 @@ function Toggle({ checked, onChange, disabled, label, note }) {
   )
 }
 
-export default function Login({ onDone }) {
+export default function Login({ onDone, initialMode }) {
   const { users, setUser, error: userError } = useUser()
   const [step, setStep] = useState(1)
-  const [mode, setMode] = useState(new URLSearchParams(window.location.search).has('create') ? 'create' : 'signin')                 // 'signin' (any colleague) or 'create' (new login)
+  const [mode, setMode] = useState(initialMode ?? (new URLSearchParams(window.location.search).has('create') ? 'create' : 'signin'))                 // 'signin' (any colleague) or 'create' (new login)
   const [pick, setPick] = useState(null)
   const [pickCard, setPickCard] = useState(null)
   const [query, setQuery] = useState('')

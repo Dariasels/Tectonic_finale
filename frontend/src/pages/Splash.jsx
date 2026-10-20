@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, BookOpen, Check, GitBranch, MessageSquare } from 'lucide-react'
+import { BookOpen, Check, GitBranch, LogIn, MessageSquare, UserPlus } from 'lucide-react'
 import { api } from '../api'
 import ConnectDialog from '../ConnectDialog'
 import { getConnections, setConnections } from '../connections'
@@ -7,7 +7,7 @@ import { Logo } from '../ui'
 
 const ICON = { GitHub: GitBranch, Teams: MessageSquare, Notion: BookOpen }
 
-/* First page: the Graphlas 2.0 logo, three buttons to link accounts, and a way to continue. */
+/* First page: the logo, Sign in / Create a new login, and optional buttons to link GitHub, Teams and Notion. */
 export default function Splash({ onDone }) {
   const [providers, setProviders] = useState([])
   const [linked, setLinked] = useState(getConnections())
@@ -50,6 +50,18 @@ export default function Splash({ onDone }) {
         </p>
 
         <div className="mt-[3vw] flex flex-wrap items-center justify-center gap-3">
+          <button onClick={() => onDone('signin')} autoFocus
+            className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-base font-bold text-[#17104A] hover:bg-white/90">
+            <LogIn className="h-5 w-5" />Sign in
+          </button>
+          <button onClick={() => onDone('create')}
+            className="inline-flex items-center gap-2 rounded-lg border-2 border-white px-6 py-3 text-base font-bold text-white hover:bg-white/15">
+            <UserPlus className="h-5 w-5" />Create a new login
+          </button>
+        </div>
+
+        <p className="mt-6 text-sm font-medium text-white">Link your tools (optional)</p>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
           {providers.map((p) => {
             const Icon = ICON[p.provider]
             const done = linked.includes(p.provider)
@@ -62,10 +74,6 @@ export default function Splash({ onDone }) {
             )
           })}
         </div>
-        <button onClick={onDone} autoFocus
-          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-bold text-[#17104A] hover:bg-white/90">
-          Continue<ArrowRight className="h-4 w-4" />
-        </button>
         <p className="mt-2 text-xs text-white/90">Connecting is optional. You can change it later under Connected tools.</p>
       </div>
       <ConnectDialog provider={asking} onAllow={allow} onCancel={() => setAsking(null)} />

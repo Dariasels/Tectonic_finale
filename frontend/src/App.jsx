@@ -89,13 +89,14 @@ const splashSeen = () => {
 
 function Gate() {
   const [splash, setSplash] = useState(!splashSeen())
+  const [startMode, setStartMode] = useState(null)       // which tab of the login to open: 'signin' or 'create'
   const [signedIn, setSignedIn] = useState(getFlag())
   const { setUser } = useUser()
   const finish = (person) => { setUser(person); setFlag(true); setSignedIn(true) }
   const signOut = () => { setFlag(false); setSignedIn(false) }
-  const leaveSplash = () => { try { sessionStorage.setItem('graphlas_splash', '1') } catch { /* private mode */ } setSplash(false) }
+  const leaveSplash = (mode) => { try { sessionStorage.setItem('graphlas_splash', '1') } catch { /* private mode */ } setStartMode(mode); setSplash(false) }
   if (splash) return <Splash onDone={leaveSplash} />
-  return signedIn ? <Shell signOut={signOut} /> : <Login onDone={finish} />
+  return signedIn ? <Shell signOut={signOut} /> : <Login onDone={finish} initialMode={startMode} />
 }
 
 export default function App() {
