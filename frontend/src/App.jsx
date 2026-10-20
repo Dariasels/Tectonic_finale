@@ -8,6 +8,7 @@ import { Header } from './Header'
 import Login from './pages/Login'
 import Tools from './pages/Tools'
 import Capture from './pages/Capture'
+import Splash from './pages/Splash'
 import Search from './pages/Search'
 import Approvals from './pages/Approvals'
 import Org from './pages/Org'
@@ -78,11 +79,21 @@ const getFlag = () => {
 }
 const setFlag = (v) => { try { v ? localStorage.setItem('graphlas_signed_in', '1') : localStorage.removeItem('graphlas_signed_in') } catch { /* private mode */ } }
 
+const splashSeen = () => {
+  try {
+    if (new URLSearchParams(window.location.search).has('demo')) sessionStorage.setItem('graphlas_splash', '1')
+    return sessionStorage.getItem('graphlas_splash') === '1'
+  } catch { return false }
+}
+
 function Gate() {
+  const [splash, setSplash] = useState(!splashSeen())
   const [signedIn, setSignedIn] = useState(getFlag())
   const { setUser } = useUser()
   const finish = (person) => { setUser(person); setFlag(true); setSignedIn(true) }
   const signOut = () => { setFlag(false); setSignedIn(false) }
+  const leaveSplash = () => { try { sessionStorage.setItem('graphlas_splash', '1') } catch { /* private mode */ } setSplash(false) }
+  if (splash) return <Splash onDone={leaveSplash} />
   return signedIn ? <Shell signOut={signOut} /> : <Login onDone={finish} />
 }
 

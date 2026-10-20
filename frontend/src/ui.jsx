@@ -72,7 +72,7 @@ export function SourceChip({ source }) {
 /* Graphlas logo, inline (46x46) */
 export function Logo({ size = 46 }) {
   return (
-    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" style={{ display: "block" }}>
       <defs><radialGradient id="c" cx="35%" cy="30%"><stop offset="0" stopColor="#FF8B4A" /><stop offset="1" stopColor="#7B2FBE" /></radialGradient></defs>
       <path d="M78 22 A42 42 0 1 0 82 80" fill="none" stroke="#17104A" strokeWidth="8" strokeLinecap="round" />
       <path d="M52 52 H90" stroke="#17104A" strokeWidth="5" strokeLinecap="round" /><circle cx="92" cy="52" r="6" fill="#17104A" />
