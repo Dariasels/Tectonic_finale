@@ -18,7 +18,7 @@ export default function Model() {
     catch (e) { setError(errText(e)) } finally { setBusy(false) }
   }
   const toggle = async () => { setStatus(await api.setPolicy({ auto: !status.auto })) }
-  const reset = async () => { await api.reset(); setMsg('Resetting the demo, ready in about 15 seconds.') }
+  const reset = async () => { await api.reset(); setMsg('Rebuilding 84k graph edges and retraining XGBoost... ready in about 15 seconds.') }
 
   if (!status || !scale) return <p className="p-6 text-sm text-slate-500">Loading...</p>
   return (

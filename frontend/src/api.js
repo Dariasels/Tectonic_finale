@@ -12,6 +12,7 @@ export const api = {
   approvals: (user_id) => http.get('/approvals', { params: { user_id } }).then((r) => r.data),
   decide: (id, user_id, decision) => http.post(`/approvals/${id}/decision`, { user_id, decision }).then((r) => r.data),
   resolve: (body) => http.post('/resolutions', body).then((r) => r.data),
+  questions: () => http.get('/demo/questions').then((r) => r.data),
   samples: () => http.get('/demo/samples').then((r) => r.data),
   orgOverview: () => http.get('/org/overview').then((r) => r.data),
   orgCountry: (cc) => http.get(`/org/country/${cc}`).then((r) => r.data),

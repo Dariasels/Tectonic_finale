@@ -232,7 +232,7 @@ def gen(n_people=10000, n_notes=5000, seed=7):
             "last_modified": lm.date(), "version": int(rng.integers(1, 6)) if official else 1,
             "source": source, "language": COUNTRIES[country][1] if country in COUNTRIES else "en",
             "key_value": value, "stated_current": stated_current, "verified": False,
-            "acl": TOPICS[topic][6] if topic in TOPICS else "client:" + client, "text": text_extra})
+            "acl": ("client:" + client) if client else TOPICS[topic][6], "text": text_extra})
         return docs[-1]
 
     def author_for(dept, country):

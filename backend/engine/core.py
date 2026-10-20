@@ -78,6 +78,7 @@ class CoreEngine:
             self.persons = self.t["persons"].set_index("person_id", drop=False)
             self.teams = self.t["teams"].set_index("team_id", drop=False)
             self.topics = self.t["topics"].set_index("topic_id")
+            self.topics["scoped"] = self.topics["scoped"].astype(str) == "True"
             self.clients = self.t["clients"].set_index("client_id")
             self.countries = self.t["countries"].set_index("country")
             self.edges = self.t["edges"]
@@ -277,5 +278,5 @@ class CoreEngine:
             return u.department == acl[5:]
         if acl.startswith("client:"):
             return (acl[7:] in self.user_clients.get(user_id, set()) or u.team_id == d.team_id
-                    or u.level in ("Country Lead", "Head"))
+                    or u.level in ("Lead", "Head"))
         return False

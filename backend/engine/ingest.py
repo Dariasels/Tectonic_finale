@@ -139,7 +139,7 @@ class IngestMixin:
             return out
 
     def countries_lead(self, cc):
-        c = self.persons[(self.persons.country == cc) & (self.persons.level == "Country Lead")]
+        c = self.persons[(self.persons.country == cc) & (self.persons.role == "Country Lead")]
         return c.index[0] if len(c) else None
 
     # ---------------------------------------------------------------- approvals

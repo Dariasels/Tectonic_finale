@@ -47,7 +47,7 @@ function Shell() {
           {nav.map(([to, label, Icon]) => (
             <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => clsx('flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium', isActive ? 'bg-white text-sdw-blue shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white/70')}>
               <Icon className="h-4 w-4" />{label}
-              {to === '/approvals' && pending > 0 && <span className="ml-auto rounded-full bg-sdw-yellow px-1.5 text-xs font-bold text-ink">{pending}</span>}
+              {to === '/approvals' && pending > 0 && <span className="ml-auto animate-pulse rounded-full bg-sdw-yellow px-1.5 text-xs font-bold text-ink">{pending}</span>}
             </NavLink>
           ))}
         </nav>

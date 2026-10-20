@@ -10,20 +10,32 @@ from .core import (EDIT_PENALTY, GENERIC_PENALTY, NICE, SCOPE_PENALTY, FEATURES,
 
 STOP = {"policy", "process", "procedure", "template", "rules", "guidelines", "agreement", "sheet", "working", "key"}
 SYNONYMS = {
-    "parental_leave": ["ouderschapsverlof", "congé parental", "geboorteverlof", "parental", "baby"],
-    "pension": ["pensioen", "retraite", "pension", "jubilación", "retirement"],
-    "company_car": ["bedrijfswagen", "voiture de société", "firmenwagen", "company car"],
-    "payroll_cutoff": ["cut-off", "cutoff", "afsluitdatum"],
-    "sick_leave": ["ziekteverlof", "arbeidsongeschiktheid", "baja", "sick"],
-    "remote_work": ["telewerk", "thuiswerk", "home office", "remote"],
-    "gdpr_retention": ["gdpr", "avg", "bewaartermijn", "retention"],
-    "build_pipeline": ["build pipeline", "ci/cd", "pipeline"],
-    "deployment_process": ["deployment", "deploy", "release process"],
-    "incident_response": ["incident", "on-call", "outage"],
+    "parental_leave": ["ouderschapsverlof", "congé parental", "geboorteverlof", "permiso parental", "baja parental",
+                       "elternzeit", "parental", "baby"],
+    "pension": ["pensioen", "retraite", "pension", "jubilación", "âge de la retraite", "rente", "retirement"],
+    "company_car": ["bedrijfswagen", "voiture de société", "firmenwagen", "coche de empresa", "company car", "leasewagen"],
+    "payroll_cutoff": ["cutoff", "afsluitdatum", "deadline loonlijst"],
+    "sick_leave": ["ziekteverlof", "ziekte", "ziek", "arbeidsongeschiktheid", "baja por enfermedad", "congé maladie", "sick"],
+    "remote_work": ["telewerk", "thuiswerk", "home office", "télétravail", "teletrabajo", "remote"],
+    "gdpr_retention": ["gdpr", "avg", "bewaartermijn", "personnel file", "how long do we keep", "data retention", "privacy"],
+    "build_pipeline": ["build pipeline", "ci/cd", "pipeline", "build"],
+    "deployment_process": ["deployment", "deploy", "release process", "naar productie", "production release"],
+    "incident_response": ["incident", "on call", "outage", "storing"],
     "client_sla": ["sla", "service level"],
-    "client_contacts": ["contacts", "contactpersoon", "who is the contact"],
+    "client_contacts": ["contacts", "contact person", "contactpersoon", "who is the contact", "key contact"],
+    "correction_process": ["correct", "correction", "error", "mistake", "fout", "rectificatie"],
+    "bonus_payment": ["bonus", "13th month", "dertiende maand"],
+    "escalation_path": ["escalate", "escalation path"],
+    "training_budget": ["opleidingsbudget", "opleiding", "formation", "formación"],
+    "working_hours": ["werkuren", "arbeidsduur", "werktijd", "heures de travail"],
+    "expense_policy": ["onkosten", "onkostenvergoeding", "dépenses", "gastos", "expenses"],
+    "api_guidelines": ["api"],
+    "leave_carryover": ["carry over", "overdracht verlof", "verlof overdragen"],
+    "year_end_closing": ["jaarafsluiting", "year end", "clôture annuelle"],
+    "tax_withholding": ["bedrijfsvoorheffing", "withholding", "précompte"],
 }
-COUNTRY_SYN = {"belgië": "BE", "belgie": "BE", "belgique": "BE", "nederland": "NL", "holland": "NL", "duitsland": "DE",
+COUNTRY_SYN = {"espagne": "ES", "alemania": "DE", "allemagne": "DE", "belgica": "BE", "pays bas": "NL", "polonia": "PL",
+               "pologne": "PL", "francia": "FR", "italia": "IT", "oostenrijk": "AT", "belgië": "BE", "belgie": "BE", "belgique": "BE", "nederland": "NL", "holland": "NL", "duitsland": "DE",
                "frankrijk": "FR", "spanje": "ES", "españa": "ES", "polen": "PL", "polska": "PL", "italië": "IT",
                "oostenrijk": "AT", "griekenland": "GR", "zweden": "SE", "denemarken": "DK", "uk": "GB"}
 CLIENT_TOPIC = {"payroll_cutoff": "client_cutoff", "escalation_path": "client_escalation"}
@@ -35,35 +47,41 @@ SRC_TEXT = {"SharePoint": "official, versioned", "GitHub": "versioned, reviewed 
 class QueryMixin:
     # ------------------------------------------------------------------ parsing
     def parse_query(self, text):
-        q = text.lower()
+        norm = lambda t: re.sub(r"[-_/]", " ", t.lower())
+        q = norm(text)
+        has = lambda w: re.search(rf"\b{re.escape(norm(w))}", q) is not None
         country = None
         for name, cc in COUNTRY_SYN.items():
-            if re.search(rf"\b{re.escape(name)}\b", q):
+            if has(name):
                 country = cc
         for cc, row in self.countries.iterrows():
-            if re.search(rf"\b{re.escape(row['name'].lower())}\b", q):
+            if has(row["name"]):
                 country = cc
         if not country:
-            m = re.search(r"\b(?:in|for|voor|en|à)?\s*\b([A-Z]{2})\b(?!\w)", text)
+            m = re.search(r"\b(?:in|for|voor|en|à)\s+([A-Z]{2})\b", text)
             if m and m.group(1) in self.countries.index:
                 country = m.group(1)
-        client = next((cid for cid, r in self.clients.iterrows() if r["name"].lower() in q), None)
+        client = next((cid for cid, r in self.clients.iterrows() if has(r["name"])), None)
         best, best_score = None, 0.0
+        scored = []
         for tid, r in self.topics.iterrows():
             score = 0.0
             for syn in SYNONYMS.get(tid, []):
-                if syn in q:
+                if has(syn):
                     score = max(score, 1.0 + len(syn) / 100)
-            words = [w for w in re.split(r"[\s/&]+", r["name"].lower()) if w not in STOP and len(w) >= 3]
+            words = [w for w in re.split(r"\s+", norm(r["name"])) if w not in STOP and len(w) >= 3]
             if words:
-                hit = [w for w in words if w in q]
+                hit = [w for w in words if has(w)]
                 if hit and len(hit) / len(words) >= 0.5:
                     score = max(score, len(hit) / len(words) + sum(map(len, hit)) / 100)
+            if score > 0:
+                scored.append((score, tid))
             if score > best_score:
                 best, best_score = tid, score
-        if best and best.startswith("client_") and not client:
-            pass
-        return {"topic": best, "country": country, "client": client}
+        scored.sort(reverse=True)
+        close = [t for sc, t in scored[:4] if sc >= best_score - 0.1 and not t.startswith("client_")]
+        ambiguous = best_score < 1.0 and len(close) >= 2          # only a partial match on several topics
+        return {"topic": best, "country": country, "client": client, "alternatives": close if ambiguous else []}
 
     # -------------------------------------------------------------------- votes
     def vote_delta(self, doc_id):
@@ -172,6 +190,9 @@ class QueryMixin:
         topic = parsed["topic"]
         country = country or parsed["country"]
         client = client or parsed["client"]
+        defaulted = False
+        if topic and not country and not client and bool(self.topics.scoped.get(topic, False)):
+            country, defaulted = user.country, True          # country-specific topic without a country: use the user's own
         d = self.docs
         if topic:
             topics = [topic] + ([CLIENT_TOPIC[topic]] if client and topic in CLIENT_TOPIC else [])
@@ -216,9 +237,10 @@ class QueryMixin:
         shortcuts = self.shortcuts(topic, country, client)
         return {"query": text,
                 "intent": {"mode": mode, "topic": topic, "topic_name": self.topics.name.get(topic) if topic else None,
-                           "country": country, "client": client,
+                           "country": country, "country_defaulted": defaulted, "client": client,
                            "client_name": self.clients.name.get(client) if client else None,
                            "user_country": user.country},
+                "did_you_mean": [{"topic_id": t, "name": self.topics.name[t]} for t in parsed["alternatives"]],
                 "banner": banner, "related_notes": related_notes, "results": results, "ask_expert": bool(results == [] or best < 45),
                 "experts": experts, "shortcuts": shortcuts, "graph": self._subgraph(results),
                 "timings_ms": round((time.time() - t0) * 1000, 1)}
@@ -281,7 +303,7 @@ class QueryMixin:
         else:
             s = s.sort_values(ascending=False)
         for pid, sc in s.items():
-            if not self.persons.active[pid] or self.persons.level[pid] in ("Country Lead", "Head") and sc < 0.9:
+            if not self.persons.active[pid] or self.persons.level[pid] in ("Lead", "Head") and sc < 0.9:
                 continue
             ev = []
             for typ, label in [("AUTHORED", "wrote {n}"), ("APPROVED", "approved {n}"), ("REVIEWS", "reviewed {n}"),
@@ -384,5 +406,5 @@ class QueryMixin:
         pick("HR Advisor, Belgium", (p.country == "BE") & (p.department == "HR Advisory") & (p.level == "Senior"))
         pick("Back-end developer, Poland", (p.country == "PL") & (p.department == "Engineering") & (p.level == "Medior"))
         pick("Payroll specialist, Netherlands", (p.country == "NL") & (p.department == "Payroll Operations") & (p.level == "Junior"))
-        pick("Country Lead, Belgium", (p.country == "BE") & (p.level == "Country Lead"))
+        pick("Country Lead, Belgium", (p.country == "BE") & (p.role == "Country Lead"))
         return out

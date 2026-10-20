@@ -220,6 +220,23 @@ def scale():
             "model_auc_cv": round(e.cv_auc, 3), "note": "All data is simulated."}
 
 
+@app.get("/api/demo/questions")
+def demo_questions():
+    """Mock questions per category, each with the persona that should ask it."""
+    from engine.questions import CURATED
+    e = eng()
+    labels = {u["label"].split(",")[0].split(" ")[0].lower(): u for u in e.demo_users()}
+    who = {"es": "Sales", "hr": "HR", "dev": "Back-end", "pay": "Payroll", "lead": "Country"}
+    out = []
+    for cat, text, w, exp in CURATED:
+        if not text or "DROP TABLE" in text or "<script>" in text:
+            continue
+        u = labels.get(who[w].lower())
+        out.append({"category": cat, "text": text, "persona": u["person_id"] if u else None,
+                    "persona_label": u["label"] if u else None})
+    return out
+
+
 @app.get("/api/demo/samples")
 def demo_samples():
     e = eng()

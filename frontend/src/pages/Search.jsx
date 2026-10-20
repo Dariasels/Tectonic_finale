@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, ChevronDown, ChevronUp, Flag, Search as SearchIcon, ShieldCheck, ThumbsUp, UserCheck, Users } from 'lucide-react'
 import { api, errText } from '../api'
 import { useUser } from '../user'
-import { Button, Card, Chip, ErrorBox, Reasons, TrustBadge } from '../ui'
+import { Button, Card, Chip, ErrorBox, Reasons, SourceChip, TrustBadge } from '../ui'
 
-const EXAMPLES = [
+const FEATURED = [
   'How much parental leave do I get in Belgium?',
   'What do we know about Nike?',
   'payroll cut-off for Nike in Belgium',
@@ -43,7 +43,7 @@ function ResultCard({ r, user, intent, onChanged }) {
           </div>
           {r.key_value && <p className="mt-1 text-lg text-sdw-blue">{r.key_value}</p>}
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <Chip>{r.source}</Chip>
+            <SourceChip source={r.source} />
             <Chip>{r.country}</Chip>
             {r.client_name && <Chip>{r.client_name}</Chip>}
             <Chip>updated {r.last_modified}</Chip>
@@ -145,11 +145,15 @@ export default function Search() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef(null)
+  const { users, setUser } = useUser()
+  const [library, setLibrary] = useState([])
+  const [showLib, setShowLib] = useState(false)
+  useEffect(() => { api.questions().then(setLibrary).catch(() => {}) }, [])
 
-  const run = async (text) => {
+  const run = async (text, asUserId) => {
     if (!user) return
     setLoading(true); setError('')
-    try { setData(await api.search({ q: text, user_id: user.person_id })) }
+    try { setData(await api.search({ q: text, user_id: asUserId ?? user.person_id })) }
     catch (e) { setError(errText(e)) }
     finally { setLoading(false) }
   }
@@ -174,8 +178,28 @@ export default function Search() {
         <Button type="submit" className="px-5">Search</Button>
       </form>
       <div className="flex flex-wrap gap-2">
-        {EXAMPLES.map((ex) => <button key={ex} onClick={() => { setQ(ex); run(ex) }} className="rounded-full bg-white px-3 py-1 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">{ex}</button>)}
+        {FEATURED.map((ex) => <button key={ex} onClick={() => { setQ(ex); run(ex) }} className="rounded-full bg-white px-3 py-1 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">{ex}</button>)}
+        {library.length > 0 && <button onClick={() => setShowLib(!showLib)} className="rounded-full px-3 py-1 text-sm font-medium text-sdw-blue hover:underline">{showLib ? 'Hide' : `More example questions (${library.length})`}</button>}
       </div>
+      {showLib && (
+        <Card className="space-y-3">
+          <p className="text-xs text-slate-500">Each question switches to the colleague who would ask it, so you can see their access rights.</p>
+          {[...new Set(library.map((x) => x.category))].map((cat) => (
+            <div key={cat}>
+              <p className="mb-1 text-xs font-semibold uppercase text-slate-500">{cat}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {library.filter((x) => x.category === cat).map((x) => (
+                  <button key={x.text + x.persona} title={x.persona_label} onClick={() => {
+                    const u = users.find((u) => u.person_id === x.persona)
+                    if (u) setUser(u)
+                    setQ(x.text); run(x.text, x.persona ?? undefined)
+                  }} className="rounded-full bg-slate-50 px-2.5 py-0.5 text-xs text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100">{x.text}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
       <ErrorBox>{error}</ErrorBox>
       {loading && <p className="text-sm text-slate-500">Searching...</p>}
       {data && (
@@ -183,10 +207,16 @@ export default function Search() {
           <div className="space-y-3 lg:col-span-2">
             <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
               {data.intent.topic_name && <Chip>Topic: {data.intent.topic_name}</Chip>}
-              {data.intent.country && <Chip>Country: {data.intent.country}</Chip>}
+              {data.intent.country && <Chip>Country: {data.intent.country}{data.intent.country_defaulted ? ' (your country)' : ''}</Chip>}
               {data.intent.client_name && <Chip>Customer: {data.intent.client_name}</Chip>}
               <span>{data.results.length} results in {data.timings_ms} ms{data.related_notes ? `, ${data.related_notes} loose notes hidden` : ''}</span>
             </div>
+            {data.did_you_mean?.length > 0 && (
+              <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">
+                Did you mean:{' '}
+                {data.did_you_mean.map((d) => <button key={d.topic_id} className="mr-2 font-medium text-sdw-blue hover:underline" onClick={() => { setQ(d.name); run(d.name) }}>{d.name}</button>)}
+              </div>
+            )}
             {data.banner && (
               <div className="flex items-start gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 ring-1 ring-rose-200">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><span>{data.banner.message}</span>

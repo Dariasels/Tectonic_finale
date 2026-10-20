@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Check, Info, X } from 'lucide-react'
+import { BookOpen, Check, Cloud, FileText, GitBranch, HardDrive, Info, MessageSquare, X } from 'lucide-react'
 
 const BADGE = {
   green: 'bg-emerald-100 text-emerald-800 ring-emerald-300',
@@ -63,4 +63,10 @@ export function HealthBar({ value, badge }) {
       <span className="w-10 text-xs tabular-nums text-slate-600">{value ?? '-'}</span>
     </div>
   )
+}
+
+const SRC_ICON = { SharePoint: FileText, Teams: MessageSquare, OneDrive: Cloud, Notion: BookOpen, GitHub: GitBranch, 'Legacy drive': HardDrive }
+export function SourceChip({ source }) {
+  const Icon = SRC_ICON[source] ?? FileText
+  return <Chip className="gap-1"><Icon className="h-3 w-3" />{source}</Chip>
 }
