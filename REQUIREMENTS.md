@@ -1,7 +1,7 @@
 # Requirements
 
 Living document. Claude updates it whenever scope, decisions, or status change.
-Last updated: 2026-10-20 (hackathon day, context read, waiting for company interview)
+Last updated: 2026-10-20 (interview received, MVP direction agreed)
 
 ## 1. Challenge (SD Worx finals: "One more challenge")
 Round 1 question: *How might we turn fragmented organisational knowledge into a trusted shared resource?*
@@ -49,7 +49,7 @@ _To be filled after the interview and scope decision._
 
 ## 6. Non-functional requirements
 - Time budget: **7 hours of building (09:00 to 16:00)**, then pitch. Happy path works end to end.
-- Demo must run without our own device: deployed URL and/or recorded video plus ppt/pdf pitch on USB.
+- Demo is a recorded video inside the ppt/pdf pitch (no live URL, no own device at the jury).
 - Security matters (10% + Aikido): no free-form queries from LLM, input validation, server-side access checks, no secrets in repo.
 - Runs locally with `./dev.sh`.
 
@@ -59,7 +59,7 @@ _To be filled after the interview and scope decision._
 - Dev: Vite proxies `/api` to the backend on port 8000
 
 ## 8. Open questions
-- **DEPLOYMENT:** ask organizers whether a live URL is required or a local/USB demo is enough (own devices not allowed). If a URL: Vercel frontend + Render backend, set up early.
+- ~~DEPLOYMENT~~ Resolved: no live URL needed. Demo = **video embedded in the ppt** (own devices not allowed), plus pitch as ppt/pdf. Record the video from the local app.
 - Interview with SD Worx: roles and hierarchy, document types, how data is shared internally, which workflow/tool to integrate (Teams?), which daily signals are really available.
 - Tree graph vs random forest: leaning to keep XGBoost (already tree-based).
 - Which one or two demo scenarios (new developer, marketing campaign, parental leave)?
@@ -71,12 +71,16 @@ _To be filled after the interview and scope decision._
 | 2026-10-19 | React + FastAPI | Team preference; fast to iterate |
 | 2026-10-19 | Lovable/Cursor optional, not default | Avoid two tools editing one repo |
 | 2026-10-20 | Build on GRAPHLAS, not restart | Team decision; graph + ML scoring is kept |
+| 2026-10-20 | One property graph with org tree inside (Country > Department > Team nodes), not nested graphs | Trust signals cross team/country borders; team score is a roll-up of document scores |
+| 2026-10-20 | No live URL; demo video in the ppt | Organizers: not required; own devices not allowed |
+| 2026-10-20 | Handover brief postponed (later, nice to have) | Team decision |
 | 2026-10-20 | `context/` is git-ignored | 55 MB partner PDF should not go in a public repo |
 
 ## 10. Status
 - [x] Scaffold, dev.sh, CLAUDE.md, subagents
 - [x] Challenge + finals guide + old repo read
-- [ ] Company interview and scope decision
+- [x] Company interview received (26 countries, 10k staff, layer on top of Teams/SharePoint/OneDrive/shared drives/legacy, access rights, who-knows-what, no handover protocol)
+- [ ] Scope decision: MVP = find/trust + keep-it-trusted loop (incremental scoring, dedup, hierarchy approval, expert finder, ACL, org drill-down, scale data); handover brief later
 - [ ] Port GRAPHLAS engine into `backend/` behind FastAPI
 - [ ] React UI
 - [ ] Aikido baseline scan (early) and fix round (before 15:00)
