@@ -12,6 +12,7 @@ VERY_LOW = 20                 # intrinsic trust below this goes to the team lead
 REVIEW_CAP = 5                # open reviews per team lead at a time, so nobody gets an avalanche
 ORPHAN_MIN_AGE_DAYS = 365     # a young document is never an orphan
 KEEP_QUIET_DAYS = 180         # a document the team lead kept is not offered again for this long
+GOOD = 70                     # an orphan only leaves if a trusted (green) document remains on the same subject
 
 
 class CleanupMixin:
@@ -40,7 +41,7 @@ class CleanupMixin:
         entry = {"doc_id": did, "title": d.title, "location": self.where(d), "team_id": d.team_id, "rule": rule, "by": by,
                  "when": str(REFERENCE_DATE.date()), "successor": successor, "links_redirected": 0, "restored": False}
         entry["reason"] = {"superseded": "Replaced by a verified newer document.",
-                           "orphan": "Nobody links to it, nobody who contributed is still here, and it was never verified.",
+                           "orphan": "Nobody links to it, nobody who contributed is still here, it was never verified, and a trusted document on the same subject remains.",
                            "review": "The team lead judged that it can go."}[rule]
         if successor:                                            # links to the old document now point to its successor
             e = self.edges
@@ -110,10 +111,13 @@ class CleanupMixin:
             out.append(did)
         return out
 
-    def _last_of_group(self, did):
+    def _no_good_alternative(self, did, going=()):
+        """True if no other live, trusted document (green) remains on the same subject. Then a person decides, not the sweep."""
         r = self.docs.loc[did]
         d = self._live()
-        return len(d[(d.topic_id == r.topic_id) & (d.country == r.country) & (d.client == r.client)]) <= 1
+        same = d[(d.topic_id == r.topic_id) & (d.country == r.country) & (d.client == r.client) & (d.index != did)]
+        same = same[~same.index.isin(list(going))]
+        return not (self.trust[same.index] >= GOOD).any()
 
     def _open_reviews(self):
         out = {}
@@ -144,8 +148,9 @@ class CleanupMixin:
                     if not dry_run:
                         self.retire(old, "superseded", run_by, succ[0], refresh=False)
             review = []
-            for did in self._orphans():
-                if self._last_of_group(did):                       # the only document left on that subject: a person decides
+            orphans = self._orphans()
+            for did in orphans:
+                if self._no_good_alternative(did, going=orphans):     # nothing trusted would remain on that subject: a person decides
                     out["protected"].append(did)
                     review.append(did)
                 else:
@@ -159,7 +164,7 @@ class CleanupMixin:
             open_now = self._open_reviews()
             already = {a["doc_id"] for a in self.approvals.values() if a.get("kind") == "review" and a["status"] == "pending"}
             low = [i for i in t[t < VERY_LOW].sort_values().index if i not in self.superseded_by]
-            for did in dict.fromkeys(low + review):
+            for did in dict.fromkeys(review + low):               # documents nobody may remove automatically come first
                 if did in already or self.docs.retired[did] or did in out["orphans"]:
                     continue
                 if (REFERENCE_DATE - self.review_kept.get(did, REFERENCE_DATE - pd.Timedelta(days=999))).days < KEEP_QUIET_DAYS:

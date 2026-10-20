@@ -408,3 +408,55 @@ def test_survey_answers_are_optional_and_can_have_several_values(mut, ids):
     assert p["answers"]["frequency"] == ["weekly"]                                 # a single value still works
     assert mut.set_profile(uid, answers={"find": []})["answers"]["find"] == []     # clearing is fine
     assert mut.set_profile(uid)["onboarded"]                                       # saving with no answers at all is fine
+
+
+def test_meeting_description_is_read_but_not_stored(mut, ids):
+    h = mut.heroes
+    plain = mut.ingest_meeting(h["be_cs"], {"title": "Weekly sync", "attendees": []})
+    assert plain["status"] == "ignored"                                              # the title alone says nothing
+    n = len(mut.docs)
+    res = mut.ingest_meeting(h["be_cs"], {"title": "Weekly sync", "attendees": [],
+                                          "description": "Agenda: 1. Nike payroll cut-off in Belgium: agree the new date."})
+    assert res["status"] == "captured" and len(mut.docs) == n + 1
+    assert res["extracted"]["client"] == "C01" and res["extracted"]["topic"] == "payroll_cutoff" and res["extracted"]["country"] == "BE"
+    assert set(res["read_from_description"]) == {"topic", "customer", "country"}
+    stored = mut.docs.loc[mut.docs.index[-1]]
+    assert "agree the new date" not in (stored.text + stored.title)                  # the agenda text is not kept
+    vague = mut.ingest_meeting(h["be_cs"], {"title": "Catch up", "attendees": [], "description": "Coffee and general news."})
+    assert vague["status"] == "ignored"
+    both = mut.ingest_meeting(h["be_cs"], {"title": "Nike payroll cut-off review", "attendees": [], "description": "Open questions."})
+    assert both["status"] == "captured"
+
+
+def test_diego_silva_has_an_approval_waiting(eng):
+    h = eng.heroes
+    items = eng.list_approvals(h["es_sales"])
+    assert len(items) >= 1
+    a = items[0]
+    assert a["kind"] == "approval" and a["approver"]["person_id"] == h["es_sales"]
+    assert a["author"]["person_id"] == h["es_junior"] and eng.reports_to[h["es_junior"]] == h["es_sales"]
+    assert any("verified document" in r and "Expat payroll policy Spain 2026" in r for r in a["reasons"])
+    assert "://" not in a["document"]["location"]
+
+
+def test_signals_are_described_by_what_is_true(eng):
+    for did in ("H001", "H002", "H003", "D00110", "H011"):
+        row = eng.F.loc[did]
+        for c in eng.contributions(did, n=6):
+            lab = c["label"]
+            if lab.startswith("No conflicts"):
+                assert row.conflict_share == 0
+            if lab.startswith("Conflicts with"):
+                assert row.conflict_share > 0
+            if lab == "Owner left the company":
+                assert row.owner_inactive == 1
+            if lab == "Owner still works here":
+                assert row.owner_inactive == 0
+            if lab.startswith("Replaced by"):
+                assert row.superseded == 1
+            if lab.startswith("Recently updated"):
+                assert row.age_days < 365 * 1.5
+    h2 = {c["label"]: c["effect"] for c in eng.contributions("H002", n=6)}
+    assert h2["Owner left the company"] < 0 and h2["Replaced by a newer version"] < 0           # bad facts lower trust: shown red
+    h1 = {c["label"]: c["effect"] for c in eng.contributions("H001", n=6)}
+    assert h1["Owner still works here"] > 0                                                      # good facts raise trust: shown green

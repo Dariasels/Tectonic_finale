@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-from .core import (EDIT_PENALTY, GENERIC_PENALTY, NICE, SCOPE_PENALTY, FEATURES, badge)
+from .core import (SRC_KEY, EDIT_PENALTY, GENERIC_PENALTY, NICE, SCOPE_PENALTY, FEATURES, badge)
 
 STOP = {"policy", "process", "procedure", "template", "rules", "guidelines", "agreement", "sheet", "working", "key"}
 SYNONYMS = {
@@ -149,12 +149,54 @@ class QueryMixin:
             out.append((0, "A team lead is listed on this document but did not write it (ignored for expertise)"))
         return out
 
+    def signal_text(self, feature, row):
+        """A signal in plain words that says what is TRUE for this document (not just the name of the signal)."""
+        v = row[feature]
+        med = self._signal_medians
+        if feature == "age_days":
+            y = v / 365
+            return f"Last updated {y:.1f} years ago" if y >= 1.5 else "Recently updated"
+        if feature == "no_owner":
+            return "No owner" if v else "Has an owner"
+        if feature == "no_dept":
+            return "No department" if v else "Belongs to a department"
+        if feature == "owner_inactive":
+            return "Owner left the company" if v else "Owner still works here"
+        if feature == "n_reviewers":
+            return "Never reviewed" if v == 0 else f"Reviewed by {int(v)} {'person' if v == 1 else 'people'}"
+        if feature == "version":
+            return f"Version {int(v)}"
+        if feature == "in_degree":
+            return "Nobody links to it" if v == 0 else f"Linked from {int(v)} other documents"
+        if feature == "pagerank":
+            return "Many documents point to it (popular)" if v > med["pagerank"] else "Few documents point to it"
+        if feature == "trustrank":
+            return "Trusted documents point to it" if v > med["trustrank"] else "Few trusted documents point to it"
+        if feature == "clustering":
+            return "Only linked inside its own small group" if v > 0.3 else "Linked across different groups"
+        if feature == "ext_link_ratio":
+            return "Reaches outside its own group" if v > 0.3 else "Only connected inside its own group"
+        if feature == "conflict_share":
+            return f"Conflicts with {round(v * 100)}% of the other documents on this subject" if v > 0 else "No conflicts with other documents"
+        if feature == "superseded":
+            return "Replaced by a newer version" if v else "Not replaced"
+        if feature == "sim_max":
+            return "Almost identical to another document" if v > 0.9 else "Has its own content"
+        if feature.startswith("src_"):
+            tool = next(t for t, k in SRC_KEY.items() if f"src_{k}" == feature)
+            return f"Stored in {tool}" if v else f"Not stored in {tool}"
+        return NICE[feature]
+
     def contributions(self, doc_id, n=4):
+        """The biggest reasons behind the model's score. Each says what is true; effect > 0 raises trust (shown green), < 0 lowers it (red)."""
+        if not hasattr(self, "_signal_medians"):
+            self._signal_medians = {"pagerank": float(self.F.pagerank.median()), "trustrank": float(self.F.trustrank.median())}
         row = self.F.loc[[doc_id]]
         c = self.model.get_booster().predict(xgb.DMatrix(row), pred_contribs=True)[0][:-1]
         s = pd.Series(c, index=FEATURES)
         top = s.reindex(s.abs().sort_values(ascending=False).index)[:n]
-        return [{"label": NICE[k], "effect": round(-float(v), 2)} for k, v in top.items()]  # minus: P(unreliable)
+        vals = row.iloc[0]
+        return [{"label": self.signal_text(k, vals), "effect": round(-float(v), 2)} for k, v in top.items()]  # minus: contribution to P(unreliable)
 
     def doc_json(self, d, country=None, client=None, detail=False):
         t, in_scope, notes = self.final_trust(d, country, client)
@@ -310,18 +352,18 @@ class QueryMixin:
             if not self.persons.active[pid] or self.persons.level[pid] in ("Lead", "Head") and sc < 0.9:
                 continue
             ev = []
-            for typ, label in [("AUTHORED", "wrote {n}"), ("APPROVED", "approved {n}"), ("REVIEWS", "reviewed {n}"),
-                               ("ATTENDED", "attended {n} meetings"), ("COMMITTED", "committed to {n} documents")]:
+            for typ, label in [("AUTHORED", "wrote {n} document(s) on this"), ("APPROVED", "approved {n} on this"), ("REVIEWS", "reviewed {n} on this"),
+                               ("ATTENDED", "joined {n} meeting(s) about this"), ("COMMITTED", "worked on {n} document(s) in GitHub")]:
                 c = self.evidence.get((key, pid, typ))
                 if c:
                     ev.append(label.format(n=c))
             ic = self.interactions.get((key, pid))
             if ic:
-                ev.append(f"{int(ic)} customer interactions")
+                ev.append(f"{int(ic)} contacts with this customer")
             if (key, pid) in self.res_bonus:
-                ev.append("confirmed by colleagues as the right contact")
+                ev.append("colleagues said they were the right contact")
             if (key, pid) in self.trainings:
-                ev.append("completed training")
+                ev.append("followed a training on this")
             card = self.person_card(pid)
             card.update({"score": round(float(sc), 2), "evidence": ev, "same_country": bool(country and card["country"] == country)})
             out.append(card)
@@ -359,7 +401,8 @@ class QueryMixin:
     def validation(self):
         """Why the 0-100 score deserves trust, measured against the hidden truth (does a document state the current value?).
         Uses out-of-fold model predictions, so no document is scored by a model that trained on it."""
-        if getattr(self, "_validation_cache", None) and self._validation_cache[0] == len(self.docs):
+        key = (len(self.docs), len(self.retired), str(self.model_trained_at))            # new, removed documents or a retrain
+        if getattr(self, "_validation_cache", None) and self._validation_cache[0] == key:
             return self._validation_cache[1]
         from sklearn.metrics import roc_auc_score
         d = self._live()
@@ -387,7 +430,7 @@ class QueryMixin:
                                                              "random_pick": round(float(r.random.mean()), 3)},
                "auc_vs_truth": round(float(roc_auc_score(truth, trust)), 3), "bands": bands,
                "note": "Simulated data with a hidden ground truth. It shows the method works, not accuracy in a real company."}
-        self._validation_cache = (len(self.docs), out)
+        self._validation_cache = (key, out)
         return out
 
     def org_country(self, cc):

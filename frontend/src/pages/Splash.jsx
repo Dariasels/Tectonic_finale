@@ -1,8 +1,10 @@
 import { LogIn, UserPlus } from 'lucide-react'
+import { useT } from '../i18n'
 import { Logo } from '../ui'
 
 /* First page: the logo, Sign in and Create a new login. */
 export default function Splash({ onDone }) {
+  const t = useT()
   return (
     <div
       className="flex min-h-screen items-center justify-center px-6 text-[#17104A]"
@@ -36,11 +38,11 @@ export default function Splash({ onDone }) {
         <div className="mt-[3vw] flex flex-wrap items-center justify-center gap-3">
           <button onClick={() => onDone('signin')} autoFocus
             className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-base font-bold text-[#17104A] hover:bg-white/90">
-            <LogIn className="h-5 w-5" />Sign in
+            <LogIn className="h-5 w-5" />{t('sign_in')}
           </button>
           <button onClick={() => onDone('create')}
             className="inline-flex items-center gap-2 rounded-lg border-2 border-white px-6 py-3 text-base font-bold text-white hover:bg-white/15">
-            <UserPlus className="h-5 w-5" />Create a new login
+            <UserPlus className="h-5 w-5" />{t('create_login')}
           </button>
         </div>
 

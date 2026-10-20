@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, FileText, MapPin, RotateCcw, Trash2, X } from 'lucide-react'
 import { api, errText } from '../api'
+import { useT } from '../i18n'
 import { useUser } from '../user'
 import { Button, Card, Chip, ErrorBox, Loading, TrustBadge } from '../ui'
 
 function ApprovalCard({ a, onDecide, done }) {
+  const t = useT()
   return (
     <Card className="border-l-4 border-l-magenta">
       <div className="flex items-start justify-between gap-3">
@@ -20,8 +22,8 @@ function ApprovalCard({ a, onDecide, done }) {
       <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">{a.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
       {done ? <p className="mt-3 text-sm font-medium text-oktext">{done}</p> : (
         <div className="mt-3 flex gap-2">
-          <Button variant="good" onClick={() => onDecide(a, 'approve')}><Check className="h-4 w-4" />Approve</Button>
-          <Button variant="bad" onClick={() => onDecide(a, 'reject')}><X className="h-4 w-4" />Reject</Button>
+          <Button variant="good" onClick={() => onDecide(a, 'approve')}><Check className="h-4 w-4" />{t('approve')}</Button>
+          <Button variant="bad" onClick={() => onDecide(a, 'reject')}><X className="h-4 w-4" />{t('reject')}</Button>
         </div>
       )}
     </Card>
@@ -30,24 +32,25 @@ function ApprovalCard({ a, onDecide, done }) {
 
 /* A very low score: the team lead is asked, with the reasons, whether the document can go. Nothing is removed without an answer. */
 function ReviewCard({ a, onDecide, done }) {
+  const t = useT()
   return (
     <Card className="border-l-4 border-l-bad">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <p className="text-xs font-semibold uppercase text-muted">Clean-up review</p>
-          <h3 className="text-lg font-extrabold">Do you want to remove this document?</h3>
+          <h3 className="text-lg font-extrabold">{t('remove_question')}</h3>
           <p className="flex items-center gap-1.5"><FileText className="h-4 w-4 shrink-0 text-muted" /><span className="font-medium">{a.document.title}</span></p>
           <p className="flex items-center gap-1.5 text-sm text-muted"><MapPin className="h-4 w-4 shrink-0" />Find it in: {a.document.location}</p>
         </div>
         <TrustBadge badge={a.document.badge} score={a.document.trust} />
       </div>
-      <p className="mt-3 text-sm font-medium">Because:</p>
+      <p className="mt-3 text-sm font-medium">{t('because')}:</p>
       <ul className="list-disc space-y-1 pl-5 text-sm">{a.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
       <p className="mt-2 text-xs text-muted">Removing only hides it in Graphlas. The file itself stays where it is, and you can restore it below.</p>
       {done ? <p className="mt-3 text-sm font-medium text-oktext">{done}</p> : (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="bad" onClick={() => onDecide(a, 'remove')}><Trash2 className="h-4 w-4" />Yes, remove it</Button>
-          <Button variant="good" onClick={() => onDecide(a, 'keep')}><Check className="h-4 w-4" />No, keep it: it is reliable</Button>
+          <Button variant="bad" onClick={() => onDecide(a, 'remove')}><Trash2 className="h-4 w-4" />{t('remove_yes')}</Button>
+          <Button variant="good" onClick={() => onDecide(a, 'keep')}><Check className="h-4 w-4" />{t('keep_no')}</Button>
         </div>
       )}
     </Card>

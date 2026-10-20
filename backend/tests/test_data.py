@@ -109,7 +109,8 @@ def test_superseding_documents_are_newer(eng):
 
 def test_feedback_matches_hidden_truth(eng):
     fb = eng.feedback.unreliable.astype(float)
-    assert set(fb.index) == set(eng.docs.index)
+    originals = {i for i in eng.docs.index if not i.startswith("N")}                  # N... = documents that arrived through events (the seeded example)
+    assert set(fb.index) == originals
     assert fb[~eng.truth.reindex(fb.index)].mean() > fb[eng.truth.reindex(fb.index)].mean() + 0.3
 
 

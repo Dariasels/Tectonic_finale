@@ -120,6 +120,17 @@ def inject_heroes(t, seed=11):
        "cut-off on day 20", "Payroll cut-off. Rule: cut-off on day 20. Standard for all Belgian customers.", True,
        verified=True, version=5, approver=appr)
     new_edges += [("H011", "H013", "LINKS_TO", 1), ("H011", "H012", "SUPERSEDES", 1)]
+    # ---- S4 Diego Silva (Spain) has an approval waiting: a junior who reports to him changed a verified Spanish policy
+    diego = es.index[0]
+    mates = P[(P.team_id == P.team_id[diego]) & P.active & (P.index != diego)]
+    junior_es = (mates[mates.level == "Junior"].index.tolist() or mates.index.tolist())[0]
+    senior_es = [i for i in mates.index if i != junior_es and mates.level[i] in ("Senior", "Medior")][0]
+    P.loc[junior_es, "reports_to"] = diego
+    drop_ids |= group_ids("expat_payroll", "ES")
+    mk("H021", "Expat payroll policy Spain 2026", "expat_payroll", "ES", "", senior_es, "SharePoint", "2026-08-30",
+       "split payroll 40 percent", "Expat payroll. Rule: split payroll 40 percent.", True, verified=True, version=3,
+       approver=above(senior_es))
+
     reassigned = nike_docs[:6]                                     # new author: the old approval no longer applies
     D.loc[D.doc_id.isin(reassigned), "verified"] = False
     E = E[~((E.type == "APPROVED") & E.target.isin(reassigned))]
@@ -143,5 +154,5 @@ def inject_heroes(t, seed=11):
                          "active": True, "previous_department": "", "opt_in_signals": False}])
     t["persons"] = pd.concat([t["persons"], admin, ceo], ignore_index=True)
     t["_heroes"] = {"admin": nid, "ceo": f"P{int(nid[1:]) + 1:05d}", "hr_senior": senior, "hr_medior": medior, "hr_junior": junior, "approver": appr,
-                    "es_sales": es.index[0], "be_cs": be_cs, "pension_expert": expert, "nl_cs_left": nl_cs}
+                    "es_sales": es.index[0], "es_junior": junior_es, "es_senior": senior_es, "be_cs": be_cs, "pension_expert": expert, "nl_cs_left": nl_cs}
     return t

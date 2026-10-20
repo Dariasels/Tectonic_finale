@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Copy, Mail, X } from 'lucide-react'
 import { api, errText } from './api'
+import { useT } from './i18n'
 import { Button } from './ui'
 
 /* Contact card of a colleague: opened by clicking a name. */
 export default function PersonDialog({ personId, userId, onClose }) {
+  const t = useT()
   const [p, setP] = useState(null)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
@@ -46,8 +48,8 @@ export default function PersonDialog({ personId, userId, onClose }) {
               <div className="space-y-2 rounded-lg bg-soft p-3">
                 <p className="break-all text-sm font-medium">{p.email}</p>
                 <div className="flex gap-2">
-                  <a href={`mailto:${p.email}`} className="inline-flex items-center gap-1.5 rounded-lg bg-[linear-gradient(100deg,#F0343C,#B3308F_60%,#7B2FBE)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"><Mail className="h-4 w-4" />Send an email</a>
-                  <Button variant="ghost" onClick={copy}><Copy className="h-4 w-4" />{copied ? 'Copied' : 'Copy'}</Button>
+                  <a href={`mailto:${p.email}`} className="inline-flex items-center gap-1.5 rounded-lg bg-[linear-gradient(100deg,#F0343C,#B3308F_60%,#7B2FBE)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"><Mail className="h-4 w-4" />{t('send_email')}</a>
+                  <Button variant="ghost" onClick={copy}><Copy className="h-4 w-4" />{copied ? '✓' : t('copy')}</Button>
                 </div>
               </div>
             ) : <p className="rounded-lg bg-warnbg p-3 text-sm text-warntext">{p.note}</p>}

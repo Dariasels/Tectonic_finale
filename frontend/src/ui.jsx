@@ -1,16 +1,19 @@
 import clsx from 'clsx'
+import { useT } from './i18n'
 import { BookOpen, Check, Cloud, FileText, GitBranch, HardDrive, Info, MessageSquare, X } from 'lucide-react'
 
 const DOT = { green: 'bg-ok', yellow: 'bg-warn', red: 'bg-bad' }
-const BADGE_LABEL = { green: 'Reliable', yellow: 'Verify', red: 'Unreliable' }
+const BADGE_KEY = { green: 'reliable', yellow: 'verify', red: 'unreliable' }
 
 /* Status is shown as a dot; brand colours are never used for status. */
 export function TrustBadge({ badge, score, className }) {
+  const t = useT()
+  const label = t(BADGE_KEY[badge])
   return (
-    <span className={clsx('inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-sm', className)} title={BADGE_LABEL[badge]}>
+    <span className={clsx('inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-sm', className)} title={label}>
       <span className={clsx('h-2.5 w-2.5 rounded-full', DOT[badge])} aria-hidden="true" />
       <span className="text-base font-extrabold tabular-nums">{Math.round(score)}</span>
-      <span className="text-xs font-medium text-muted">{BADGE_LABEL[badge]}</span>
+      <span className="text-xs font-medium text-muted">{label}</span>
     </span>
   )
 }

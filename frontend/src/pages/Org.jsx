@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api, errText } from '../api'
+import { useT } from '../i18n'
 import { Card, Chip, ErrorBox, HealthBar, Loading } from '../ui'
 
 export default function Org() {
+  const t = useT()
   const [view, setView] = useState('country')       // company-wide view: by country or by department
   const [path, setPath] = useState([])          // [] -> countries, [cc] -> departments, [cc, dept] -> teams, [cc, dept, team] -> team
   const [data, setData] = useState(null)
@@ -21,12 +23,12 @@ export default function Org() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-[26px] font-extrabold">Organisation</h2>
+        <h2 className="text-[26px] font-extrabold">{t('nav_org')}</h2>
         <p className="text-sm text-muted">Health = average trust score of the documents a unit owns. Click to drill down: country, department, team.</p>
       </div>
       {path.length === 0 && (
         <div className="flex gap-2 text-sm" role="tablist">
-          {[['country', 'By country'], ['department', 'By department']].map(([k, l]) => (
+          {[['country', t('org_by_country')], ['department', t('org_by_dept')]].map(([k, l]) => (
             <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} className={`rounded-lg px-3 py-1.5 font-medium ${view === k ? 'border-b-2 border-magenta bg-surface' : 'text-muted hover:bg-surface'}`}>{l}</button>
           ))}
         </div>

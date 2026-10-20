@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Check, Lock } from 'lucide-react'
 import { api, errText } from '../api'
 import { Header } from '../Header'
+import { useT } from '../i18n'
 import { useUser } from '../user'
 import { Button, Card, ErrorBox, SourceChip } from '../ui'
 
@@ -37,6 +38,7 @@ function Toggle({ checked, onChange, disabled, label, note }) {
 }
 
 export default function Login({ onDone, initialMode }) {
+  const t = useT()
   const { users, setUser, error: userError } = useUser()
   const [step, setStep] = useState(1)
   const [mode, setMode] = useState(initialMode ?? (new URLSearchParams(window.location.search).has('create') ? 'create' : 'signin'))                 // 'signin' (any colleague) or 'create' (new login)
@@ -110,7 +112,7 @@ export default function Login({ onDone, initialMode }) {
       <Header right={null} />
       <main className="mx-auto max-w-2xl space-y-4 px-4 py-6">
         <div>
-          <h2 className="text-[26px] font-extrabold">{step === 1 ? (mode === 'create' ? 'Create a login' : 'Sign in') : step === 2 ? 'Your tools and how you work' : 'Privacy and connections'}</h2>
+          <h2 className="text-[26px] font-extrabold">{step === 1 ? (mode === 'create' ? t('create_login') : t('sign_in')) : step === 2 ? 'Your tools and how you work' : 'Privacy and connections'}</h2>
           <p className="text-sm text-muted">Step {step} of 3. This takes a minute, and you can change everything later under Connected tools.</p>
         </div>
         <ErrorBox>{error || userError}</ErrorBox>
@@ -118,7 +120,7 @@ export default function Login({ onDone, initialMode }) {
         {step === 1 && (
           <Card className="space-y-4">
             <div className="flex gap-2 text-sm" role="tablist">
-              {[['signin', 'Sign in'], ['create', 'Create a new login']].map(([k, l]) => (
+              {[['signin', t('sign_in')], ['create', t('create_login')]].map(([k, l]) => (
                 <button key={k} role="tab" aria-selected={mode === k} onClick={() => { setMode(k); setError('') }}
                   className={`rounded-lg px-3 py-1.5 font-medium ${mode === k ? 'border-b-2 border-magenta bg-soft' : 'text-muted hover:bg-soft'}`}>{l}</button>
               ))}
@@ -258,9 +260,9 @@ export default function Login({ onDone, initialMode }) {
         )}
 
         <div className="flex justify-between">
-          <Button variant="ghost" disabled={step === 1} onClick={() => setStep(step - 1)}>Back</Button>
-          {step < 3 ? <Button onClick={next} disabled={mode === 'signin' ? !pick : !(created || form.name.trim().length >= 2)}>Next<ArrowRight className="h-4 w-4" /></Button>
-            : <Button onClick={finish} disabled={busy}>{busy ? 'Saving...' : 'Enter Graphlas'}</Button>}
+          <Button variant="ghost" disabled={step === 1} onClick={() => setStep(step - 1)}>{t('back')}</Button>
+          {step < 3 ? <Button onClick={next} disabled={mode === 'signin' ? !pick : !(created || form.name.trim().length >= 2)}>{t('next')}<ArrowRight className="h-4 w-4" /></Button>
+            : <Button onClick={finish} disabled={busy}>{busy ? '...' : t('enter')}</Button>}
         </div>
       </main>
     </div>

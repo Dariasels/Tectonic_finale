@@ -356,12 +356,17 @@ class ToolsMixin:
             self._log("meeting", user_id, title, "Teams", "ignored: Teams not connected")
             return {"status": "ignored", "reason": f"Teams is not connected for {self.teams.name[team]}; nothing was read.",
                     "timings_ms": round((time.time() - t0) * 1000, 1)}
-        parsed = self.parse_query(title)
+        description = str(payload.get("description") or "").strip()[:1000]
+        by_title = self.parse_query(title)
+        parsed = self.parse_query(f"{title}. {description}") if description else by_title
         topic = None if parsed["alternatives"] else parsed["topic"]
         client = parsed["client"]
+        # what only the description revealed (the description itself is never stored)
+        from_description = [k for k, a, b in (("topic", by_title["topic"], parsed["topic"]), ("customer", by_title["client"], parsed["client"]),
+                                              ("country", by_title["country"], parsed["country"])) if b and not a]
         if not topic and not client:
-            self._log("meeting", user_id, title, "Teams", "ignored: no topic or customer in the title")
-            return {"status": "ignored", "reason": "No topic or customer recognised in the title: nothing is stored.",
+            self._log("meeting", user_id, title, "Teams", "ignored: no topic or customer in the title or description")
+            return {"status": "ignored", "reason": "No topic or customer recognised in the title or description: nothing is stored.",
                     "extracted": {"topic": None, "country": parsed["country"], "client": None},
                     "timings_ms": round((time.time() - t0) * 1000, 1)}
         with self.lock:
@@ -389,6 +394,7 @@ class ToolsMixin:
         out = {"status": "captured", "captured": "link, title and attendance (no content)",
                "extracted": {"topic": res["document"]["topic_id"], "topic_name": res["document"]["topic_name"],
                              "country": parsed["country"], "client": client, "client_name": self.clients.name.get(client) if client else None},
+               "read_from_description": from_description,
                "attendees": {"invited": len(people), "counted": len(counted), "not_opted_in": len(people) - len(counted)},
                "expertise_updates": added, "metadata": self.doc_metadata(did), "link": self.docs.link[did],
                "timings_ms": round((time.time() - t0) * 1000, 1)}

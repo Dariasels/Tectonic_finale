@@ -1,4 +1,18 @@
+import { Globe } from 'lucide-react'
+import { LANGUAGES, useLang } from './i18n'
 import { Logo } from './ui'
+
+function LanguageSelect() {
+  const { lang, setLang, t } = useLang()
+  return (
+    <label className="flex items-center gap-1 text-white">
+      <Globe className="h-4 w-4" aria-hidden="true" /><span className="sr-only">{t('language')}</span>
+      <select value={lang} onChange={(e) => setLang(e.target.value)} className="max-w-[7.5rem] rounded-lg border border-white/35 bg-[rgba(15,14,26,.45)] px-1.5 py-1.5 text-sm text-white">
+        {LANGUAGES.map((l) => <option key={l.code} value={l.code} className="bg-white text-[#0F0E1A]">{l.name}</option>)}
+      </select>
+    </label>
+  )
+}
 
 export function Header({ right }) {
   return (
@@ -25,7 +39,7 @@ export function Header({ right }) {
             </p>
           </div>
         </div>
-        {right}
+        <div className="flex shrink-0 items-center gap-2"><LanguageSelect />{right}</div>
       </div>
     </header>
   )

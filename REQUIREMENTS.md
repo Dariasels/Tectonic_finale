@@ -89,6 +89,8 @@ _To be filled after the interview and scope decision._
 | 2026-10-20 | The answer to a question is a person (with the trust score), the file title and where it is kept in plain words; no links; clicking the person shows contact details with the company email. The explanation behind the score is kept under "Why this score?" | Team decision |
 | 2026-10-20 | Model & scale and Live capture only for system admin, CEO, country leads, department heads (enforced on the server) | Team decision |
 | 2026-10-20 | Automatic clean-up: replaced documents (once the successor is verified) and graph orphans leave Graphlas by themselves; very low scores go to the team lead (not the whole team) for review; links to a removed document are redirected to its successor; everything logged and restorable | Team decision |
+| 2026-10-20 | First improvement after the hackathon: an extraction agent that reads a file once and keeps one fact (docs/IMPROVEMENTS.md); not built now | Team decision |
+| 2026-10-20 | Interface available in the 21 languages of the 26 countries (main labels; machine translated, to be reviewed); documents stay English | Team decision |
 | 2026-10-20 | `context/` is git-ignored | 55 MB partner PDF should not go in a public repo |
 
 ## 10. Status

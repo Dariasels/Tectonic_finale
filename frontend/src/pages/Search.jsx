@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, ChevronDown, ChevronUp, FileText, Flag, Mail, MapPin, Search as SearchIcon, ShieldCheck, ThumbsUp, UserCheck, Users } from 'lucide-react'
 import { api, errText } from '../api'
 import { useUser } from '../user'
+import { useT } from '../i18n'
 import PersonDialog from '../PersonDialog'
 import ScoreProof from '../ScoreProof'
 import { Button, Card, Chip, ErrorBox, Reasons, SourceChip, TrustBadge } from '../ui'
@@ -25,6 +26,7 @@ function PersonLine({ p }) {
 }
 
 function ResultCard({ r, user, intent, onChanged, onPerson }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [msg, setMsg] = useState('')
   const vote = async (kind) => {
@@ -47,13 +49,13 @@ function ResultCard({ r, user, intent, onChanged, onPerson }) {
             </p>
           ) : <p className="text-lg font-extrabold">No colleague to ask</p>}
           <p className="flex items-center gap-1.5 text-base"><FileText className="h-4 w-4 shrink-0 text-muted" /><span className="font-medium">{r.title}</span></p>
-          <p className="flex items-center gap-1.5 text-sm text-muted"><MapPin className="h-4 w-4 shrink-0" /><span>Find it in: <span className="text-main">{r.location}</span></span></p>
+          <p className="flex items-center gap-1.5 text-sm text-muted"><MapPin className="h-4 w-4 shrink-0" /><span>{t('find_it_in')}: <span className="text-main">{r.location}</span></span></p>
           {r.holder_note && <p className="text-xs text-muted">{r.holder_note}</p>}
         </div>
         <TrustBadge badge={r.badge} score={r.trust} />
       </div>
       <button className="mt-3 flex items-center gap-1 text-sm font-medium text-accent" onClick={() => setOpen(!open)}>
-        Why this score? {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        {t('why_this_score')} {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
       {open && (
         <div className="mt-2 space-y-3 rounded-lg bg-soft p-3">
@@ -79,8 +81,8 @@ function ResultCard({ r, user, intent, onChanged, onPerson }) {
             </div>
           )}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" aria-pressed={r.my_vote === 'confirm'} className={r.my_vote === 'confirm' ? 'ring-2 ring-ok' : ''} onClick={() => vote('confirm')}><ThumbsUp className="h-4 w-4" />Confirm</Button>
-            <Button variant="ghost" aria-pressed={r.my_vote === 'flag'} className={r.my_vote === 'flag' ? 'ring-2 ring-bad' : ''} onClick={() => vote('flag')}><Flag className="h-4 w-4" />Flag as wrong</Button>
+            <Button variant="ghost" aria-pressed={r.my_vote === 'confirm'} className={r.my_vote === 'confirm' ? 'ring-2 ring-ok' : ''} onClick={() => vote('confirm')}><ThumbsUp className="h-4 w-4" />{t('confirm')}</Button>
+            <Button variant="ghost" aria-pressed={r.my_vote === 'flag'} className={r.my_vote === 'flag' ? 'ring-2 ring-bad' : ''} onClick={() => vote('flag')}><Flag className="h-4 w-4" />{t('flag_wrong')}</Button>
             <span className="text-sm text-muted">{msg}</span>
           </div>
         </div>
@@ -90,6 +92,7 @@ function ResultCard({ r, user, intent, onChanged, onPerson }) {
 }
 
 function Experts({ experts, intent, user, onPerson }) {
+  const t = useT()
   const [done, setDone] = useState({})
   const helped = async (p) => {
     try {
@@ -100,13 +103,13 @@ function Experts({ experts, intent, user, onPerson }) {
   if (!experts.length) return null
   return (
     <Card>
-      <h3 className="mb-2 flex items-center gap-2 font-semibold"><Users className="h-5 w-5 text-accent" />Who knows this?</h3>
+      <h3 className="mb-2 flex items-center gap-2 font-semibold"><Users className="h-5 w-5 text-accent" />{t('other_colleagues')}</h3>
       <ul className="space-y-3">
         {experts.map((p) => (
           <li key={p.person_id} className="text-sm">
             <div className="flex items-center justify-between gap-2">
               <div><button onClick={() => onPerson(p.person_id)} className="font-semibold text-accent hover:underline">{p.name}</button> <span className="text-muted">{p.role}, {p.country}</span></div>
-              <Button variant="ghost" className="shrink-0 whitespace-nowrap" onClick={() => helped(p)}><UserCheck className="h-4 w-4" />This helped</Button>
+              <Button variant="ghost" className="shrink-0 whitespace-nowrap" onClick={() => helped(p)}><UserCheck className="h-4 w-4" />{t('this_helped')}</Button>
             </div>
             <div className="mt-1 flex flex-wrap gap-1">{p.evidence.map((e) => <Chip key={e}>{e}</Chip>)}</div>
             {p.moved_from && <p className="text-xs text-muted">Moved from {p.moved_from}</p>}
@@ -118,37 +121,8 @@ function Experts({ experts, intent, user, onPerson }) {
   )
 }
 
-function MiniGraph({ graph }) {
-  if (!graph?.nodes?.length) return null
-  const docs = graph.nodes.filter((n) => n.type === 'document').slice(0, 5)
-  const docIds = new Set(docs.map((n) => n.id))
-  const edges = graph.edges.filter((e) => (docIds.has(e.target) && (docIds.has(e.source) || graph.nodes.some((n) => n.id === e.source && n.type === 'person'))))
-  const personIds = new Set(edges.map((e) => e.source).filter((id) => !docIds.has(id)))
-  const people = graph.nodes.filter((n) => n.type === 'person' && personIds.has(n.id))
-  const h = Math.max(people.length, docs.length) * 44 + 20
-  const pos = {}
-  people.forEach((n, i) => { pos[n.id] = [150, 30 + i * 44] })
-  docs.forEach((n, i) => { pos[n.id] = [330, 30 + i * 44] })
-  const color = { green: '#1E9E5A', yellow: '#E0A800', red: '#D63031' }
-  return (
-    <Card>
-      <h3 className="mb-2 font-semibold">How these sources connect</h3>
-      <svg viewBox={`0 0 560 ${h}`} className="w-full text-main">
-        {edges.filter((e) => pos[e.source] && pos[e.target]).map((e, i) => {
-          const [x1, y1] = pos[e.source], [x2, y2] = pos[e.target]
-          const dash = e.type === 'LINKS_TO' ? '4 3' : e.type === 'SUPERSEDES' ? '1 3' : ''
-          const stroke = e.type === 'APPROVED' ? '#1E9E5A' : e.type === 'SUPERSEDES' ? '#D63031' : '#A9A3C2'
-          return <path key={i} d={`M${x1 + 6},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2 + (x1 === x2 ? 90 : 0)},${y2} ${x2 - 6},${y2}`} fill="none" stroke={stroke} strokeDasharray={dash} strokeWidth="1.5" />
-        })}
-        {people.map((n) => <g key={n.id}><circle cx={pos[n.id][0]} cy={pos[n.id][1]} r="6" fill={n.active ? '#7B2FBE' : '#A9A3C2'} /><text x={pos[n.id][0] - 12} y={pos[n.id][1] + 4} textAnchor="end" fontSize="13" fill="currentColor">{n.label}</text></g>)}
-        {docs.map((n) => <g key={n.id}><rect x={pos[n.id][0] - 6} y={pos[n.id][1] - 6} width="12" height="12" rx="3" fill={color[n.badge]} /><text x={pos[n.id][0] + 12} y={pos[n.id][1] + 4} fontSize="13" fill="currentColor">{n.label.slice(0, 22)}</text></g>)}
-      </svg>
-      <p className="text-xs text-muted">Solid: wrote or verified. Dashed: links to. Dotted red: replaced by.</p>
-    </Card>
-  )
-}
-
 export default function Search() {
+  const t = useT()
   const { user } = useUser()
   const [q, setQ] = useState('')
   const [data, setData] = useState(null)
@@ -186,18 +160,18 @@ export default function Search() {
         <div className="relative flex-1">
           <SearchIcon className="absolute left-3 top-3 h-5 w-5 text-muted" />
           <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} maxLength={300}
-            placeholder="Ask anything, e.g. parental leave in Belgium, or what do we know about Nike?"
+            placeholder={t('search_placeholder')}
             className="w-full rounded-xl border border-line bg-surface py-2.5 pl-10 pr-3 text-base shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30" />
         </div>
-        <Button type="submit" className="px-5">Search</Button>
+        <Button type="submit" className="px-5">{t('nav_search')}</Button>
       </form>
       <div className="flex flex-wrap gap-2">
         {FEATURED.map((ex) => <button key={ex} onClick={() => { setQ(ex); run(ex) }} className="rounded-full bg-soft px-3 py-1 text-sm text-main hover:bg-line">{ex}</button>)}
-        {library.length > 0 && <button onClick={() => setShowLib(!showLib)} className="rounded-full px-3 py-1 text-sm font-medium text-accent hover:underline">{showLib ? 'Hide' : `More example questions (${library.length})`}</button>}
+        {library.length > 0 && <button onClick={() => setShowLib(!showLib)} className="rounded-full px-3 py-1 text-sm font-medium text-accent hover:underline">{showLib ? '–' : `${t('more_examples')} (${library.length})`}</button>}
       </div>
       <div className="flex flex-wrap gap-4 text-sm">
-        <button onClick={() => setShowHelp(!showHelp)} className="font-medium text-accent hover:underline">{showHelp ? 'Hide' : 'What can I ask?'}</button>
-        <button onClick={() => setShowProof(!showProof)} className="font-medium text-accent hover:underline">{showProof ? 'Hide' : 'Why can I trust the score?'}</button>
+        <button onClick={() => setShowHelp(!showHelp)} className="font-medium text-accent hover:underline">{showHelp ? '–' : t('what_can_i_ask')}</button>
+        <button onClick={() => setShowProof(!showProof)} className="font-medium text-accent hover:underline">{showProof ? '–' : t('why_trust_score')}</button>
       </div>
       {showProof && <ScoreProof compact />}
       {showHelp && meta && (
@@ -248,7 +222,7 @@ export default function Search() {
               {data.intent.topic_name && <Chip>Topic: {data.intent.topic_name}</Chip>}
               {data.intent.country && <Chip>Country: {data.intent.country}{data.intent.country_defaulted ? ' (your country)' : ''}</Chip>}
               {data.intent.client_name && <Chip>Customer: {data.intent.client_name}</Chip>}
-              <span>Click a name for contact details and the company email. {data.results.length} results in {data.timings_ms} ms{data.related_notes ? `, ${data.related_notes} loose notes hidden` : ''}</span>
+              <span>{t('contact_hint')} {data.results.length} results in {data.timings_ms} ms{data.related_notes ? `, ${data.related_notes} loose notes hidden` : ''}</span>
             </div>
             {data.did_you_mean?.length > 0 && (
               <div className="rounded-xl bg-soft p-3 text-sm text-main">
@@ -276,7 +250,6 @@ export default function Search() {
           </div>
           <div className="space-y-3">
             <Experts experts={data.experts} intent={data.intent} user={user} onPerson={setContactId} />
-            <MiniGraph graph={data.graph} />
           </div>
         </div>
       )}

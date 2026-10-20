@@ -103,6 +103,7 @@ class DocEvent(BaseModel):
 class MeetingEvent(BaseModel):
     user_id: str = Field(pattern=r"^P\d{5}$")
     title: str = Field(max_length=200)
+    description: Optional[str] = Field(default=None, max_length=1000)      # the agenda text of the invitation; read, never stored
     attendees: list[str] = Field(default_factory=list, max_length=40)
     link: Optional[str] = Field(default=None, max_length=300, pattern=r"^https?://")
 
@@ -421,9 +422,13 @@ def demo_presets(user_id: str = UID):
     ]
     meetings = [
         {"name": "Nike payroll cut-off review with the Belgian team", "user_id": h["be_cs"],
-         "body": {"user_id": h["be_cs"], "title": "Nike payroll cut-off review with Belgium team"}},
+         "body": {"user_id": h["be_cs"], "title": "Nike payroll cut-off review with Belgium team",
+                  "description": "We go through the cut-off agreement and the open questions from the customer."}},
         {"name": "Weekly build pipeline sync", "user_id": h["hr_senior"],
          "body": {"user_id": h["hr_senior"], "title": "Weekly build pipeline sync"}},
+        {"name": "Vague title, the agenda tells what it is about", "user_id": h["be_cs"],
+         "body": {"user_id": h["be_cs"], "title": "Weekly sync",
+                  "description": "Agenda: 1. Nike payroll cut-off in Belgium: agree the new date. 2. Open points from the customer."}},
         {"name": "Private 1:1 (nothing recognised, nothing stored)", "user_id": h["hr_senior"],
          "body": {"user_id": h["hr_senior"], "title": "1:1 catch-up"}},
     ]

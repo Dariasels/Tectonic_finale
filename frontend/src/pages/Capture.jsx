@@ -25,10 +25,11 @@ function Result({ res, onSwitch }) {
       {res.captured && <p className="text-sm text-muted">Kept: {res.captured}.</p>}
       {res.extracted && res.status === 'captured' && (
         <div className="flex flex-wrap gap-1.5 text-sm">
-          <span className="text-muted">Read from the title:</span>
+          <span className="text-muted">Read from the title and description:</span>
           {res.extracted.topic_name && <Chip>topic: {res.extracted.topic_name}</Chip>}
           {res.extracted.country && <Chip>country: {res.extracted.country}</Chip>}
           {res.extracted.client_name && <Chip>customer: {res.extracted.client_name}</Chip>}
+          {res.read_from_description?.length > 0 && <span className="text-muted">(found in the description: {res.read_from_description.join(', ')})</span>}
         </div>
       )}
       {res.derived_from_title && Object.keys(res.derived_from_title).length > 0 && (
@@ -59,7 +60,7 @@ export default function Capture() {
   const [feed, setFeed] = useState([])
   const [members, setMembers] = useState([])
   const [picked, setPicked] = useState([])
-  const [meeting, setMeeting] = useState({ title: 'Nike payroll cut-off review with Belgium team', as: null })
+  const [meeting, setMeeting] = useState({ title: 'Weekly sync', description: 'Agenda: 1. Nike payroll cut-off in Belgium: agree the new date. 2. Open points from the customer.', as: null })
   const [file, setFile] = useState({ source: 'SharePoint', title: 'Parental leave Belgium (update)', path: '/sites/hr-belgium/Policies/Parental leave Belgium 2026 v5.docx', extract: 'Parental leave. Rule: 18 weeks per parent. Proposed update.', key_value: '18 weeks per parent', as: null })
   const [res, setRes] = useState(null)
   const [error, setError] = useState('')
@@ -76,7 +77,7 @@ export default function Capture() {
     setError(''); setRes(null)
     try { setRes(await fn()); refresh() } catch (e) { setError(errText(e)) }
   }
-  const sendMeeting = (e) => { e.preventDefault(); run(() => api.sendMeeting({ user_id: organizer, title: meeting.title, attendees: picked })) }
+  const sendMeeting = (e) => { e.preventDefault(); run(() => api.sendMeeting({ user_id: organizer, title: meeting.title, description: meeting.description || undefined, attendees: picked })) }
   const sendFile = (e) => {
     e.preventDefault()
     run(() => api.sendEvent({ user_id: file.as ?? user.person_id, source: file.source, title: file.title, path: file.path || undefined, extract: file.extract || undefined, key_value: file.key_value }))
@@ -92,11 +93,12 @@ export default function Capture() {
       <div className="grid gap-4 lg:grid-cols-2">
         <form onSubmit={sendMeeting} className="space-y-3 rounded-xl border border-line bg-surface p-4">
           <h3 className="flex items-center gap-2 font-semibold"><CalendarClock className="h-5 w-5 text-accent" />Someone plans a Teams meeting</h3>
-          <select className={field} defaultValue="" onChange={(e) => { const m = presets.meetings[e.target.value]; setMeeting(m ? { title: m.body.title, as: m.user_id } : { ...meeting, as: null }) }}>
+          <select className={field} defaultValue="" onChange={(e) => { const m = presets.meetings[e.target.value]; setMeeting(m ? { title: m.body.title, description: m.body.description ?? '', as: m.user_id } : { ...meeting, as: null }) }}>
             <option value="">Load an example...</option>
             {presets.meetings.map((m, i) => <option key={m.name} value={i}>{m.name}</option>)}
           </select>
-          <input className={field} value={meeting.title} maxLength={200} required onChange={(e) => setMeeting({ ...meeting, title: e.target.value })} aria-label="Meeting title" />
+          <input className={field} value={meeting.title} maxLength={200} required onChange={(e) => setMeeting({ ...meeting, title: e.target.value })} aria-label="Meeting title" placeholder="Meeting title" />
+          <textarea className={field} rows={3} value={meeting.description} maxLength={1000} onChange={(e) => setMeeting({ ...meeting, description: e.target.value })} aria-label="Meeting description" placeholder="Meeting description or agenda (optional). It is read, never stored." />
           <div>
             <p className="mb-1 text-xs font-semibold uppercase text-muted">Attendees (only people who opted in count)</p>
             <div className="grid gap-1 sm:grid-cols-2">

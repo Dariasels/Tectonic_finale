@@ -70,6 +70,9 @@ def test_orphans_follow_the_rules(clean, before, sweep):
         people = [r.owner_id, r.author_id, clean.approver.get(did, "")] + clean.reviewers.get(did, [])
         assert not any(p and clean.persons.active[p] for p in people), did                 # nobody who contributed is still here
         assert clean.docs.retired[did] and clean.retired[did]["rule"] == "orphan"
+        same = clean._live()
+        same = same[(same.topic_id == r.topic_id) & (same.country == r.country) & (same.client == r.client)]
+        assert (clean.trust[same.index] >= 70).any(), f"{did} left although no trusted document remains on its subject"
 
 
 def test_documents_that_are_not_orphans_stay(clean, before, sweep):
@@ -84,7 +87,7 @@ def test_documents_that_are_not_orphans_stay(clean, before, sweep):
     assert len(gone) < before["n_live"] * 0.05                                              # a sweep removes a small part, never a mass
 
 
-def test_the_only_document_on_a_subject_goes_to_a_person_not_the_bin(clean, sweep):
+def test_a_document_with_no_trusted_alternative_goes_to_a_person_not_the_bin(clean, sweep):
     assert sweep["protected"]
     for did in sweep["protected"]:
         assert not clean.docs.retired[did]
@@ -110,6 +113,12 @@ def test_very_low_scores_go_to_the_team_lead_with_a_cap(clean, sweep):
         assert not d.pending                                                                # reviews are not shown as awaiting approval
     assert max(per.values()) <= REVIEW_CAP
     assert not clean.docs.retired[[a["doc_id"] for a in reviews if a["doc_id"] not in sweep["protected"]]].any()   # never removed automatically
+
+
+def test_validation_is_recomputed_after_removals(clean, sweep):
+    v = clean.validation()
+    assert v["groups"] < 780                                   # fewer groups mix correct and outdated documents once the outdated ones left
+    assert clean.validation() is clean.validation()           # and it is cached until something changes
 
 
 def test_repeated_sweeps_settle_and_never_duplicate_reviews(clean, sweep):

@@ -26,6 +26,15 @@ class TrustEngine(CleanupMixin, ToolsMixin, IngestMixin, QueryMixin, CoreEngine)
         self.last_train_wall = None
         self._init_tools()
         self._seed_resolutions()
+        self._seed_approvals()
+
+    def _seed_approvals(self):
+        """A ready example: Diego Silva has one approval waiting (a colleague changed a verified policy)."""
+        h = self.heroes
+        self.ingest({"source": "SharePoint", "title": "Expat payroll Spain update", "topic_id": "expat_payroll", "country": "ES",
+                     "key_value": "split payroll 55 percent", "extract": "Expat payroll. Rule: split payroll 55 percent. Proposed update.",
+                     "path": "/sites/internationals-spain/Policies/Expat payroll Spain 2026 v4.docx", "folder": "Policies", "template": None},
+                    h["es_junior"])
 
     @staticmethod
     def _make_emails(persons):

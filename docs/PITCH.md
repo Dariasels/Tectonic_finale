@@ -42,6 +42,9 @@ All numbers below come from simulated data (10,000+ people, 26 countries, about 
 | How does it fit the workflow? | It sits on Teams, SharePoint, OneDrive, Notion, GitHub; no migration |
 | Understandable without attention? | Calm UI: a colour and a reason; attention only on a conflict, a low score or an approval |
 
+## Next steps slide
+1. **Extraction agent** (first improvement): read a file once, keep one fact, forget the content (see docs/IMPROVEMENTS.md). 2. Real connections (OAuth, webhooks). 3. Expertise that fades and weights per tool. 4. Real feedback in a pilot team.
+
 ## Assumptions slide
 All documents are in English (questions can use other languages through synonyms). Country > department > team is the standard hierarchy. Not every team has a team lead. Every role exists in every country. Teams adopt templates for new HR documents. Data and colleague feedback are simulated; the validation shows the method works, not real-world accuracy. Tool connections are simulated; real OAuth is the next step. The interview left open: how versions are tracked, whether templates exist, how often documents are made; the sign-in questionnaire collects exactly that.
 
