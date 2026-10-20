@@ -6,8 +6,12 @@ All numbers below come from simulated data (10,000+ people, 26 countries, about 
 
 ## Script (about 430 words, 3:00)
 
-**0:00 Problem (20 s)**
-"SD Worx grew from 1,500 to 10,000 people in 26 countries. The knowledge is in Teams, SharePoint, OneDrive, Notion, GitHub and old drives, and in people's heads. People can find a document. The hard question is: can I trust it, and who knows more? And nobody has time to maintain yet another knowledge system."
+**0:00 Intro: the problem and the promise (20 s)**
+"Do you know the feeling? The document you need is somewhere in Teams, SharePoint, Notion or a drive nobody remembers. In another team. In another country. Every team has its own way of working, and every person has their own system. So nobody knows where to look, or who knows.
+SD Worx grew from 1,500 to 10,000 people in 26 countries. The knowledge grew faster than the structure.
+We are Graphlas. We want three things: documents you can trust, information shared across teams and countries, and zero extra work for your people. So how do we do it?"
+*(Short version, 12 s: "Your documents are scattered over different tools, teams and countries, and nobody knows where to look or who knows. We want trustworthy documents, shared across the company, without anyone having to maintain them. This is Graphlas. Here is how.")*
+*(Tone: say "the knowledge grew faster than the structure", not "they have no structure". One slide only: the logo and the slogan; no separate problem slide.)*
 
 **0:20 Pillar 1: platform integrations (40 s)**
 "Nothing is ever uploaded to Graphlas. A team signs up, picks the tools it already uses, and connects them with a login. From then on tools send events. When someone plans a Teams meeting, we read the title: topic, customer, country. The people who attend get expertise points, if they opted in. A meeting called 'catch-up' is not stored at all. When someone saves a file in a connected tool, we keep the link and the metadata, never the document. Zero extra work for anyone."
@@ -26,7 +30,7 @@ All numbers below come from simulated data (10,000+ people, 26 countries, about 
 
 ## Slides (ppt/pdf, 7 slides)
 1. Logo + slogan.
-2. The problem (26 countries, 10,000 people, scattered tools) and the five questions we answer.
+2. (Dropped as a separate slide: the problem is spoken over the logo slide. Keep the five questions for the Q&A.)
 3. **Pillar 1: platform integrations** (diagram: tools -> events -> link + metadata; meeting title dissected; 'catch-up' dropped).
 4. **Pillar 2: the graph** (country > department > team, people, documents, topics, customers; a question scoped to a branch).
 5. **Pillar 3: the trust score** (colour, reasons, the validation chart: 92/83/42/59 and 98/46/20).
