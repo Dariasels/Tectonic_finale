@@ -3,7 +3,7 @@
 /* Graphlas 2.0 design tokens */
 :root {
   --navy: #17104a; --orange: #ff8b4a; --red: #f0343c; --magenta: #b3308f; --purple: #7b2fbe; --ink: #0f0e1a;
-  --page: #fbf9fc; --surface: #ffffff; --main: #1b1633; --muted: #6b6585; --line: #e6e1ee; --soft: #f4f1f8;
+  --page: #ffffff; --surface: #ffffff; --main: #1b1633; --muted: #6b6585; --line: #e6e1ee; --soft: #f4f1f8;
   --accent: #7b2fbe;
   --ok: #1e9e5a; --warn: #e0a800; --bad: #d63031;
   --ok-text: #137a45; --ok-bg: #e7f6ee; --warn-text: #7a5c00; --warn-bg: #fff6d6; --bad-text: #b02325; --bad-bg: #fdecec;
@@ -33,3 +33,8 @@ html { font-family: var(--font-sans); }
 body { margin: 0; background: var(--page); color: var(--main); font-size: 15px; line-height: 1.5; }
 :focus-visible { outline: 3px solid #ff8b4a; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+/* Optional soft light green page background (light mode only) */
+@media not (prefers-color-scheme: dark) {
+  :root[data-bg="green"] { --page: #eef6f0; --soft: #e2efe6; --line: #d7e5db; }
+}

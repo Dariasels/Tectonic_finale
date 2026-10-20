@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Check, Lock } from 'lucide-react'
 import { api, errText } from '../api'
 import { Header } from '../Header'
-import { getConnections } from '../connections'
 import { useUser } from '../user'
 import { Button, Card, ErrorBox, SourceChip } from '../ui'
 
@@ -51,8 +50,8 @@ export default function Login({ onDone, initialMode }) {
   const [personal, setPersonal] = useState([])
   const [team, setTeam] = useState([])
   const [signals, setSignals] = useState({})
-  const [connected, setConnected] = useState(Object.fromEntries(getConnections().map((c) => [c, true])))
-  const linkedAccounts = getConnections()
+  const [connected, setConnected] = useState({})
+  const linkedAccounts = []                                   // accounts are linked later, under Connected tools
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 

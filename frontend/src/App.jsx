@@ -9,6 +9,7 @@ import Login from './pages/Login'
 import Tools from './pages/Tools'
 import Capture from './pages/Capture'
 import Splash from './pages/Splash'
+import { getBg, setBg } from './theme'
 import Search from './pages/Search'
 import Approvals from './pages/Approvals'
 import Org from './pages/Org'
@@ -17,6 +18,8 @@ import Model from './pages/Model'
 function Shell({ signOut }) {
   const { users, user, setUser, error } = useUser()
   const [pending, setPending] = useState(0)
+  const [bg, setBgState] = useState(getBg())
+  const pickBg = (v) => { setBg(v); setBgState(v) }
 
   useEffect(() => {
     if (!user) return
@@ -33,6 +36,12 @@ function Shell({ signOut }) {
     <div className="min-h-screen">
       <Header right={
         <div className="flex shrink-0 items-center gap-2 text-sm">
+          <div className="flex items-center gap-1.5" role="group" aria-label="Page background">
+            {[['white', 'White background', '#ffffff'], ['green', 'Light green background', '#dcefe2']].map(([k, label, c]) => (
+              <button key={k} aria-label={label} title={label} aria-pressed={bg === k} onClick={() => pickBg(k)}
+                className={`h-6 w-6 rounded-full border-2 ${bg === k ? 'border-white ring-2 ring-[#0F0E1A]/60' : 'border-white/50'}`} style={{ background: c }} />
+            ))}
+          </div>
           <label>
             <span className="sr-only">Signed in as</span>
             <select value={user?.person_id ?? ''} onChange={(e) => setUser(options.find((u) => u.person_id === e.target.value))}

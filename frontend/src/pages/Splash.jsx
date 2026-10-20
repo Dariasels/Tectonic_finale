@@ -1,24 +1,8 @@
-import { useEffect, useState } from 'react'
-import { BookOpen, Check, GitBranch, LogIn, MessageSquare, UserPlus } from 'lucide-react'
-import { api } from '../api'
-import ConnectDialog from '../ConnectDialog'
-import { getConnections, setConnections } from '../connections'
+import { LogIn, UserPlus } from 'lucide-react'
 import { Logo } from '../ui'
 
-const ICON = { GitHub: GitBranch, Teams: MessageSquare, Notion: BookOpen }
-
-/* First page: the logo, Sign in / Create a new login, and optional buttons to link GitHub, Teams and Notion. */
+/* First page: the logo, Sign in and Create a new login. */
 export default function Splash({ onDone }) {
-  const [providers, setProviders] = useState([])
-  const [linked, setLinked] = useState(getConnections())
-  const [asking, setAsking] = useState(null)
-
-  useEffect(() => { api.providers().then(setProviders).catch(() => {}) }, [])
-  const allow = () => {
-    const next = [...new Set([...linked, asking.provider])]
-    setLinked(next); setConnections(next); setAsking(null)
-  }
-
   return (
     <div
       className="flex min-h-screen items-center justify-center px-6 text-[#17104A]"
@@ -60,23 +44,7 @@ export default function Splash({ onDone }) {
           </button>
         </div>
 
-        <p className="mt-6 text-sm font-medium text-white">Link your tools (optional)</p>
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
-          {providers.map((p) => {
-            const Icon = ICON[p.provider]
-            const done = linked.includes(p.provider)
-            return (
-              <button key={p.provider} onClick={() => !done && setAsking(p)} aria-pressed={done}
-                className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium ${done ? 'border-white/60 bg-white/90 text-[#137A45]' : 'border-white/40 bg-[rgba(15,14,26,.55)] text-white hover:bg-[rgba(15,14,26,.7)]'}`}>
-                {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
-                {done ? `${p.label} connected` : `Connect ${p.label}`}
-              </button>
-            )
-          })}
-        </div>
-        <p className="mt-2 text-xs text-white/90">Connecting is optional. You can change it later under Connected tools.</p>
       </div>
-      <ConnectDialog provider={asking} onAllow={allow} onCancel={() => setAsking(null)} />
     </div>
   )
 }
