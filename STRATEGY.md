@@ -14,6 +14,9 @@ Notion GitHub  Legacy drive    Document schema       (org tree inside)          
 - Source type is a model feature (official versioned SharePoint vs personal OneDrive vs meeting note vs legacy drive vs code repo).
 - Per-team source mix (shows variety): Engineering = GitHub + Notion + Teams; HR/Payroll = SharePoint (templates) + Teams; Sales/CS = Teams + OneDrive + SharePoint; Country leads = Teams; legacy = shared drive + old C-drives.
 
+### GitHub as a source (engineering teams)
+READMEs and docs-in-repo; **CODEOWNERS = a real owner** (no "ownerless" documents); **PR reviews = built-in human verification** that costs nobody extra effort; commits show who really knows the code (`COMMITTED` edges); last commit date = freshness; stale repos get flagged.
+
 ## 2. Graph
 One graph. Nodes: Country, Department, Team, Person, Document, Topic, Client, Source. Org tree edges: Team -PART_OF-> Department -IN-> Country; Person -MEMBER_OF-> Team; Person -REPORTS_TO-> Person.
 Knowledge edges: AUTHORED, APPROVED, REVIEWS, LISTED_AS (does not count), LINKS_TO (also across countries), SUPERSEDES, ABOUT, STORED_IN, plus signal edges (ATTENDED, COMMITTED, COMPLETED, INTERACTED_WITH) that feed expertise.
@@ -34,6 +37,9 @@ The tree is used for: routing filter, approver lookup, ACL, team-health roll-up,
 
 ## 5. When a human is needed
 Only when the model is uncertain (probability near 0.5), when sources conflict, or when a template document is created. The approver is the first person above the author in the REPORTS_TO chain; nobody approves their own work. One click, shown as a mocked Teams card.
+
+## 5b. Resolution memory (captured as a by-product of work)
+When someone searches for a long time and finally finds the right contact or document, one click ("this helped") stores it: intent (topic, country, customer) -> person/document, with a confirmation count and last-confirmed date. The next person with the same intent gets that shortcut immediately ("3 colleagues confirmed: Anna, last 2 weeks ago") and skips the whole trajectory. Nobody writes documentation. Safeguards: confirmations decay over time; the shortcut is dropped if the person left or the document was superseded; it respects ACL; it boosts expert ranking but never overrides the document's own trust score. These confirmations are also implicit training labels, which replaces manual annotation.
 
 ## 6. Template (questionnaire) for new HR documents
 Title, document type, owner, team, country, language, applies-to (country/customer), valid until, approver, source-of-truth link, supersedes (optional).

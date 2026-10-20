@@ -39,6 +39,7 @@ Keep the graph + ML scoring core. Move the front end to **React**, keep Python f
 | Maintenance burden | Skip annotation of old data (weak/implicit labels); strict templates for new HR documents with a questionnaire for required fields |
 | Workflow fit | Teams/database integration (mocked in the demo); notify only when action is needed |
 | Understandable, calm UI | Near-invisible UI, SD Worx colours (yellow to blue gradient), free React building blocks |
+| Resolution memory | A confirmed contact/document is stored per intent so the next person skips the search; also feeds retraining as implicit labels |
 | Beyond documents | "Who knows?" expert finding from the graph (roles, hierarchy, signals); team leads listed everywhere must not distort results |
 
 ## 5. Functional requirements
@@ -81,6 +82,7 @@ _To be filled after the interview and scope decision._
 - [x] Challenge + finals guide + old repo read
 - [x] Company interview received (26 countries, 10k staff, layer on top of Teams/SharePoint/OneDrive/shared drives/legacy, access rights, who-knows-what, no handover protocol)
 - [ ] Scope decision: MVP = find/trust + keep-it-trusted loop (incremental scoring, dedup, hierarchy approval, expert finder, ACL, org drill-down, scale data); handover brief later
+- [x] Mock generator `backend/engine/seed_org.py` (10.3k people, 26 countries, 935 teams, 9.6k docs, 6 sources, 84k edges, ACL, signals)
 - [ ] Port GRAPHLAS engine into `backend/` behind FastAPI
 - [ ] React UI
 - [ ] Aikido baseline scan (early) and fix round (before 15:00)
