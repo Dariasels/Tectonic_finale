@@ -4,7 +4,7 @@ Run everything: `cd backend && .venv/bin/python -m pytest tests -q` (about 80 s,
 `.venv/bin/python -m scripts.check_questions` (about 2.5 min, writes `docs/QUESTION_CHECK.md`).
 All data is simulated, so these tests prove the pipeline and the rules, not real-world accuracy.
 
-## What is tested (62 tests)
+## What is tested (76 tests)
 **Data (`tests/test_data.py`)**: sizes; unique ids; every person reaches the country lead (one per country); every reference
 (author, team, topic, customer, tool, link) resolves; every document about a customer is customer-scoped (no leak); every edge type
 connects the right kinds of nodes; one author edge per document; nobody approves their own work and the approver is above the author;
@@ -26,6 +26,10 @@ meeting titles are dissected, attendees without opt-in are not counted, titles w
 only team leads change team tools; linking and unlinking accounts switches their signals; switching a signal off removes it from expertise;
 resolution memory (one confirmation per person, fades, dropped when the contact left); edit rules (cosmetic edit counts 0, material edit counts 1);
 automatic retraining starts at the threshold and resets; never twice inside the minimum gap; ingest is much faster than a rebuild.
+
+**Also covered since the pitch review**: a vote can be changed or undone; a conflict with an unverified document alone needs no approval (only conflicts with verified claims, an unclear topic or an unsure prediction do);
+retraining only for higher management and the system admin; signing up (join a team, a team lead creates a team with tools, rules and limits); people search;
+signed-up people survive a retrain; health per department and per country; the score validation (top answer 92% vs 83% newest, 42% most linked, 59% random; green 98%, red 20%).
 
 **HTTP (`tests/test_api.py`)**: validation (ids, lengths, limits), unknown users, hostile input, no upload endpoint, link scheme checks,
 403 for hidden documents and wrong approvers, profile rules, question list.

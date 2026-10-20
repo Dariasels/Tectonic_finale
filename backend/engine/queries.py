@@ -230,6 +230,8 @@ class QueryMixin:
             rows = sorted(keep, key=lambda x: -x[0])
         rows = rows[:limit]
         results = [self.doc_json(r, country, client, detail=(i < 3)) for i, (_, _, r) in enumerate(rows)]
+        for x in results:
+            x["my_vote"] = self.user_votes.get((x["doc_id"], user_id))
         banner = self._conflict_banner(rows, country)
         key = f"client:{client}" if client else (f"topic:{topic}" if topic else None)
         best = max([x["trust"] for x in results if x["in_scope"]], default=0)
@@ -341,6 +343,49 @@ class QueryMixin:
                         "teams": int((self.teams.country == cc).sum()), **self._health(g)})
         return sorted(out, key=lambda x: x["health"] or 0)
 
+    def org_departments(self):
+        """Average trust per department across all countries."""
+        dep = self.docs.team_id.map(self.teams.department)
+        out = []
+        for dept, g in self.docs.groupby(dep):
+            out.append({"department": dept, "people": int((self.persons.department == dept).sum()),
+                        "teams": int((self.teams.department == dept).sum()), **self._health(g)})
+        return sorted(out, key=lambda x: x["health"] or 0)
+
+    def validation(self):
+        """Why the 0-100 score deserves trust, measured against the hidden truth (does a document state the current value?).
+        Uses out-of-fold model predictions, so no document is scored by a model that trained on it."""
+        if getattr(self, "_validation_cache", None) and self._validation_cache[0] == len(self.docs):
+            return self._validation_cache[1]
+        from sklearn.metrics import roc_auc_score
+        d = self.docs
+        lab = d.index.intersection(self.oof.index).intersection(self.truth.index)
+        trust = 0.85 * 100 * (1 - self.oof.reindex(lab)) + 0.15 * 100 * self.author_exp.reindex(lab)
+        truth = self.truth.reindex(lab)
+        keyed = d.loc[lab][d.loc[lab].key_value != ""]
+        rows = []
+        for _, g in keyed.groupby(["topic_id", "country", "client"]):
+            ok = truth[g.index]
+            if ok.sum() in (0, len(g)):
+                continue
+            rows.append({"ranking": bool(ok[trust[g.index].idxmax()]), "newest": bool(ok[g.last_modified.idxmax()]),
+                         "linked": bool(ok[pd.Series(self.pagerank)[g.index].idxmax()]), "random": float(ok.mean())})
+        r = pd.DataFrame(rows)
+        bands = []
+        kt = trust[keyed.index]
+        for name, lo, hi in (("green", 70, 101), ("yellow", 45, 70), ("red", 0, 45)):
+            m = (kt >= lo) & (kt < hi)
+            bands.append({"band": name, "range": f"{lo}-{min(hi - 1, 100)}", "documents": int(m.sum()),
+                          "state_the_current_value": round(float(truth[kt[m].index].mean()), 3) if m.sum() else None})
+        out = {"groups": int(len(r)), "top_answer_correct": {"graphlas": round(float(r.ranking.mean()), 3),
+                                                             "newest_document": round(float(r.newest.mean()), 3),
+                                                             "most_linked_document": round(float(r.linked.mean()), 3),
+                                                             "random_pick": round(float(r.random.mean()), 3)},
+               "auc_vs_truth": round(float(roc_auc_score(truth, trust)), 3), "bands": bands,
+               "note": "Simulated data with a hidden ground truth. It shows the method works, not accuracy in a real company."}
+        self._validation_cache = (len(self.docs), out)
+        return out
+
     def org_country(self, cc):
         tc = self.docs.team_id.map(self.teams.country)
         dd = self.docs[tc == cc]
@@ -407,5 +452,6 @@ class QueryMixin:
         pick("HR Advisor, Belgium", (p.country == "BE") & (p.department == "HR Advisory") & (p.level == "Senior"))
         pick("Back-end developer, Poland", (p.country == "PL") & (p.department == "Engineering") & (p.level == "Medior"))
         pick("Payroll specialist, Netherlands", (p.country == "NL") & (p.department == "Payroll Operations") & (p.level == "Junior"))
+        pick("System admin", (p.role == "System Admin"))
         pick("Country Lead, Belgium", (p.country == "BE") & (p.role == "Country Lead"))
         return out

@@ -1,23 +1,28 @@
 import { useEffect, useState } from 'react'
 import { api, errText } from '../api'
+import { useUser } from '../user'
+import ScoreProof from '../ScoreProof'
 import { Button, Card, ErrorBox } from '../ui'
 
 export default function Model() {
+  const { user } = useUser()
   const [status, setStatus] = useState(null)
   const [scale, setScale] = useState(null)
   const [msg, setMsg] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const load = () => { api.modelStatus().then(setStatus); api.scale().then(setScale) }
-  useEffect(load, [])
+  const load = () => { api.modelStatus(user.person_id).then(setStatus); api.scale().then(setScale) }
+  useEffect(load, [user?.person_id])
 
   const retrain = async () => {
     setBusy(true); setError('')
-    try { const r = await api.retrain(); setMsg(`Retrained in ${r.seconds} s. Accuracy (AUC) ${r.auc_before} to ${r.auc_after}. ${r.scores_changed_over_5_points} scores moved by more than 5 points.`); load() }
+    try { const r = await api.retrain(user.person_id); setMsg(`Retrained in ${r.seconds} s. Accuracy (AUC) ${r.auc_before} to ${r.auc_after}. ${r.scores_changed_over_5_points} scores moved by more than 5 points.`); load() }
     catch (e) { setError(errText(e)) } finally { setBusy(false) }
   }
-  const toggle = async () => { setStatus(await api.setPolicy({ auto: !status.auto })) }
+  const toggle = async () => {
+    try { await api.setPolicy({ user_id: user.person_id, auto: !status.auto }); load() } catch (e) { setError(errText(e)) }
+  }
   const reset = async () => { await api.reset(); setMsg('Rebuilding 84k graph edges and retraining XGBoost... ready in about 15 seconds.') }
 
   if (!status || !scale) return <p className="p-6 text-sm text-muted">Loading...</p>
@@ -31,13 +36,15 @@ export default function Model() {
         </div>
         <p className="text-sm text-muted">{status.rule}</p>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={status.auto} onChange={toggle} />Retrain automatically</label>
-          <Button onClick={retrain} disabled={busy}>{busy ? 'Training...' : 'Retrain now'}</Button>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={status.auto} disabled={!status.can_retrain} onChange={toggle} />Retrain automatically</label>
+          <Button onClick={retrain} disabled={busy || !status.can_retrain}>{busy ? 'Training...' : 'Retrain now'}</Button>
         </div>
+        {!status.can_retrain && <p className="text-sm text-muted">Only {status.who_can_retrain.toLowerCase()} Switch to one of them to try it.</p>}
         {msg && <p className="text-sm text-oktext">{msg}</p>}
         <ErrorBox>{error}</ErrorBox>
         <p className="text-sm text-muted">Model accuracy on simulated data (AUC): {status.model_auc_cv}. It shows the pipeline works, not real-world accuracy. Trained on {status.n_labels?.toLocaleString()} labels.</p>
       </Card>
+      <div className="lg:col-span-2"><ScoreProof /></div>
       <Card className="space-y-2">
         <h2 className="text-[26px] font-extrabold">Scale</h2>
         <dl className="grid grid-cols-2 gap-2 text-sm">

@@ -37,7 +37,15 @@ function Toggle({ checked, onChange, disabled, label, note }) {
 export default function Login({ onDone }) {
   const { users, setUser, error: userError } = useUser()
   const [step, setStep] = useState(1)
+  const [mode, setMode] = useState(new URLSearchParams(window.location.search).has('create') ? 'create' : 'signin')                 // 'signin' (any colleague) or 'create' (new login)
   const [pick, setPick] = useState(null)
+  const [pickCard, setPickCard] = useState(null)
+  const [query, setQuery] = useState('')
+  const [found, setFound] = useState([])
+  const [meta, setMeta] = useState(null)
+  const [opts, setOpts] = useState(null)
+  const [created, setCreated] = useState(null)
+  const [form, setForm] = useState({ name: '', country: 'BE', department: 'HR Advisory', level: 'Junior', team_id: '', new_team_name: '', tools: ['Teams', 'SharePoint'] })
   const [profile, setProfile] = useState(null)
   const [answers, setAnswers] = useState({})
   const [personal, setPersonal] = useState([])
@@ -48,13 +56,30 @@ export default function Login({ onDone }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => { if (users.length && !pick) setPick(users[0].person_id) }, [users, pick])
+  useEffect(() => { if (users.length && !pick) { setPick(users[0].person_id); setPickCard(users[0]) } }, [users, pick])
+  useEffect(() => { api.meta().then(setMeta).catch(() => {}) }, [])
+  useEffect(() => {                                           // teams of the chosen country and department
+    if (mode !== 'create') return
+    api.signupOptions(form.country, form.department).then((o) => { setOpts(o); setForm((f) => ({ ...f, team_id: o.teams[0]?.team_id ?? '' })) }).catch(() => setOpts(null))
+  }, [mode, form.country, form.department])
+  useEffect(() => {                                           // search all colleagues by name
+    if (query.trim().length < 2) { setFound([]); return }
+    const t = setTimeout(() => api.searchPeople(query.trim()).then(setFound).catch(() => setFound([])), 250)
+    return () => clearTimeout(t)
+  }, [query])
 
   const next = async () => {
     setError('')
     if (step === 1) {
       try {
-        const p = await api.profile(pick)
+        let id = pick
+        if (mode === 'create' && !created) {
+          const body = { name: form.name, country: form.country, department: form.department, level: form.level }
+          if (form.team_id === '__new') { body.new_team_name = form.new_team_name; body.team_tools = form.tools } else body.team_id = form.team_id
+          const c = await api.signup(body)
+          setCreated(c); setPick(c.person.person_id); setPickCard({ ...c.person, extra: true }); id = c.person.person_id
+        } else if (mode === 'create') id = created.person.person_id
+        const p = await api.profile(id)
         setProfile(p)
         setAnswers(p.answers ?? {})
         setPersonal([...new Set([...p.personal_tools.filter((t) => t.enabled).map((t) => t.source), ...(linkedAccounts.includes('Notion') ? ['Notion'] : [])])])
@@ -69,10 +94,9 @@ export default function Login({ onDone }) {
     setBusy(true); setError('')
     try {
       const body = { user_id: pick, personal_tools: personal, signals, answers, connections: linkedAccounts }
-      if (profile.can_edit_team) body.team_tools = team
+      if (profile.can_edit_team && !created?.team?.created) body.team_tools = team
       await api.saveProfile(body)
-      const person = users.find((u) => u.person_id === pick)
-      onDone(person)
+      onDone({ ...pickCard, extra: true })
     } catch (e) { setError(errText(e)) } finally { setBusy(false) }
   }
 
@@ -84,21 +108,78 @@ export default function Login({ onDone }) {
       <Header right={null} />
       <main className="mx-auto max-w-2xl space-y-4 px-4 py-6">
         <div>
-          <h2 className="text-[26px] font-extrabold">{step === 1 ? 'Sign in' : step === 2 ? 'Your tools and how you work' : 'Privacy and connections'}</h2>
+          <h2 className="text-[26px] font-extrabold">{step === 1 ? (mode === 'create' ? 'Create a login' : 'Sign in') : step === 2 ? 'Your tools and how you work' : 'Privacy and connections'}</h2>
           <p className="text-sm text-muted">Step {step} of 3. This takes a minute, and you can change everything later under Connected tools.</p>
         </div>
         <ErrorBox>{error || userError}</ErrorBox>
 
         {step === 1 && (
-          <Card className="space-y-3">
-            <p className="text-sm text-muted">Demo sign-in: pick a colleague. There is no password in this proof of concept.</p>
-            {users.map((u) => (
-              <label key={u.person_id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${pick === u.person_id ? 'border-magenta bg-soft' : 'border-line'}`}>
-                <input type="radio" name="who" checked={pick === u.person_id} onChange={() => setPick(u.person_id)} />
-                <span className="text-sm"><b>{u.name}</b> <span className="text-muted">{u.role}, {u.department}, {u.country}</span><span className="block text-xs text-muted">{u.label}</span></span>
-              </label>
-            ))}
-            {users.length === 0 && <p className="text-sm text-muted">Starting the backend (about 10 seconds)...</p>}
+          <Card className="space-y-4">
+            <div className="flex gap-2 text-sm" role="tablist">
+              {[['signin', 'Sign in'], ['create', 'Create a new login']].map(([k, l]) => (
+                <button key={k} role="tab" aria-selected={mode === k} onClick={() => { setMode(k); setError('') }}
+                  className={`rounded-lg px-3 py-1.5 font-medium ${mode === k ? 'border-b-2 border-magenta bg-soft' : 'text-muted hover:bg-soft'}`}>{l}</button>
+              ))}
+            </div>
+
+            {mode === 'signin' && (
+              <>
+                <p className="text-sm text-muted">Demo sign-in with a work account: search any of the {users.length ? '10,000+' : ''} colleagues by name. There is no password in this proof of concept.</p>
+                <input className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent" placeholder="Search your name, for example Sofie" value={query} maxLength={60}
+                  onChange={(e) => setQuery(e.target.value)} aria-label="Search your name" />
+                {found.map((u) => (
+                  <label key={u.person_id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${pick === u.person_id ? 'border-magenta bg-soft' : 'border-line'}`}>
+                    <input type="radio" name="who" checked={pick === u.person_id} onChange={() => { setPick(u.person_id); setPickCard({ ...u, extra: true }) }} />
+                    <span className="text-sm"><b>{u.name}</b> <span className="text-muted">{u.role}, {u.department}, {u.country}</span><span className="block text-xs text-muted">{u.team}</span></span>
+                  </label>
+                ))}
+                {query.trim().length >= 2 && found.length === 0 && <p className="text-sm text-muted">No colleague found.</p>}
+                <p className="pt-1 text-xs font-semibold uppercase text-muted">Or pick a demo colleague</p>
+                {users.map((u) => (
+                  <label key={u.person_id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${pick === u.person_id ? 'border-magenta bg-soft' : 'border-line'}`}>
+                    <input type="radio" name="who" checked={pick === u.person_id} onChange={() => { setPick(u.person_id); setPickCard(u) }} />
+                    <span className="text-sm"><b>{u.name}</b> <span className="text-muted">{u.role}, {u.department}, {u.country}</span><span className="block text-xs text-muted">{u.label}</span></span>
+                  </label>
+                ))}
+                {users.length === 0 && <p className="text-sm text-muted">Starting the backend (about 10 seconds)...</p>}
+              </>
+            )}
+
+            {mode === 'create' && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted">New to Graphlas? Create a login and join your team. A team lead can create a new team and choose its tools.</p>
+                {[['name', 'Full name']].map(([k, l]) => (
+                  <label key={k} className="block text-sm"><span className="mb-1 block font-medium">{l}</span>
+                    <input className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent" value={form[k]} maxLength={60} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></label>
+                ))}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="block text-sm"><span className="mb-1 block font-medium">Country</span>
+                    <select className="w-full rounded-lg border border-line bg-surface px-2 py-2 text-sm" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>{meta?.countries.map((c) => <option key={c.country} value={c.country}>{c.name}</option>)}</select></label>
+                  <label className="block text-sm"><span className="mb-1 block font-medium">Department</span>
+                    <select className="w-full rounded-lg border border-line bg-surface px-2 py-2 text-sm" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>{(opts?.departments ?? [form.department]).map((d) => <option key={d}>{d}</option>)}</select></label>
+                  <label className="block text-sm"><span className="mb-1 block font-medium">Level</span>
+                    <select className="w-full rounded-lg border border-line bg-surface px-2 py-2 text-sm" value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value, team_id: e.target.value !== 'Team Lead' && form.team_id === '__new' ? (opts?.teams[0]?.team_id ?? '') : form.team_id })}>{(opts?.levels ?? ['Junior', 'Medior', 'Senior', 'Team Lead']).map((l) => <option key={l}>{l}</option>)}</select></label>
+                </div>
+                <label className="block text-sm"><span className="mb-1 block font-medium">Team</span>
+                  <select className="w-full rounded-lg border border-line bg-surface px-2 py-2 text-sm" value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })}>
+                    {opts?.teams.map((t) => <option key={t.team_id} value={t.team_id}>{t.name} ({t.people} people{t.has_lead ? '' : ', no team lead'})</option>)}
+                    {form.level === 'Team Lead' && <option value="__new">Create a new team...</option>}
+                  </select></label>
+                {form.team_id === '__new' && (
+                  <div className="space-y-2 rounded-lg border border-line p-3">
+                    <label className="block text-sm"><span className="mb-1 block font-medium">Name of the new team</span>
+                      <input className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent" value={form.new_team_name} maxLength={60} onChange={(e) => setForm({ ...form, new_team_name: e.target.value })} /></label>
+                    <p className="text-sm font-medium">Which tools does your team use?</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(opts?.sources ?? []).map((t) => (
+                        <label key={t} className="flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={form.tools.includes(t)} onChange={() => setForm({ ...form, tools: form.tools.includes(t) ? form.tools.filter((x) => x !== t) : [...form.tools, t] })} /><SourceChip source={t} /></label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {created && <p className="text-sm text-oktext">Login created for {created.person.name}.</p>}
+              </div>
+            )}
           </Card>
         )}
 
@@ -146,6 +227,13 @@ export default function Login({ onDone }) {
               ))}
               <p className="text-xs text-muted">What is kept: the title, tool, author, team, country, dates, version and access rights of a document, plus what is needed to score it. Documents you may not see are never shown to others.</p>
             </Card>
+            {created?.team?.created && (
+              <Card className="space-y-2">
+                <h3 className="font-semibold">Connect links for {created.team.name}</h3>
+                <p className="text-sm text-muted">Share these with your team so each tool can be connected. Simulated in this demo.</p>
+                {Object.entries(created.connect_links).map(([tool, url]) => <p key={tool} className="flex flex-wrap items-center gap-2 text-sm"><SourceChip source={tool} /><span className="break-all font-mono text-xs">{url}</span></p>)}
+              </Card>
+            )}
             {linkedAccounts.length > 0 && (
               <Card className="space-y-1">
                 <h3 className="font-semibold">Accounts you linked on the first page</h3>
@@ -169,7 +257,7 @@ export default function Login({ onDone }) {
 
         <div className="flex justify-between">
           <Button variant="ghost" disabled={step === 1} onClick={() => setStep(step - 1)}>Back</Button>
-          {step < 3 ? <Button onClick={next} disabled={!pick}>Next<ArrowRight className="h-4 w-4" /></Button>
+          {step < 3 ? <Button onClick={next} disabled={mode === 'signin' ? !pick : !(created || form.name.trim().length >= 2)}>Next<ArrowRight className="h-4 w-4" /></Button>
             : <Button onClick={finish} disabled={busy}>{busy ? 'Saving...' : 'Enter Graphlas'}</Button>}
         </div>
       </main>

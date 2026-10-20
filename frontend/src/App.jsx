@@ -81,7 +81,8 @@ const setFlag = (v) => { try { v ? localStorage.setItem('graphlas_signed_in', '1
 
 const splashSeen = () => {
   try {
-    if (new URLSearchParams(window.location.search).has('demo')) sessionStorage.setItem('graphlas_splash', '1')
+    const q = new URLSearchParams(window.location.search)
+    if (q.has('demo') || q.has('nosplash')) sessionStorage.setItem('graphlas_splash', '1')
     return sessionStorage.getItem('graphlas_splash') === '1'
   } catch { return false }
 }

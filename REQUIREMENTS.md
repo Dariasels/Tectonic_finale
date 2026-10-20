@@ -80,6 +80,12 @@ _To be filled after the interview and scope decision._
 | 2026-10-20 | Handover brief postponed (later, nice to have) | Team decision |
 | 2026-10-20 | Product name and look: Graphlas 2.0 (header gradient orange to purple, Montserrat, status dots) | Team styling spec; replaces the yellow-to-blue SD Worx look |
 | 2026-10-20 | Documents are never uploaded in the website; tools send events, we keep link + metadata (Teams meeting titles are dissected) | Team decision: zero unnecessary effort, privacy |
+| 2026-10-20 | Pitch built on three pillars in this order: platform integrations, the graph (company structure), the trust score; then an example | Team pitch review |
+| 2026-10-20 | Assumption: all documents are in English (questions may use Dutch/French/Spanish synonyms) | Team decision |
+| 2026-10-20 | Approvals only for borderline cases: conflict with a verified claim, unclear topic, unsure prediction | Team pitch review |
+| 2026-10-20 | Retraining limited to higher management (country lead, department head) and a system admin | Team pitch review |
+| 2026-10-20 | Votes can be changed or undone | Team pitch review |
+| 2026-10-20 | Generic sign-in (search any colleague) and creating new logins; a new team's lead picks its tools and gets connect links (simulated) | Team pitch review |
 | 2026-10-20 | `context/` is git-ignored | 55 MB partner PDF should not go in a public repo |
 
 ## 10. Status
@@ -92,6 +98,7 @@ _To be filled after the interview and scope decision._
 - [x] Basic React UI (Search, Approvals, Add document, Organisation, Model & scale) with a user switcher; deep link /?q=... runs a search. To be restyled.
 - [x] Sign-in wizard with survey + Connected tools screen; document events captured as metadata at once (simulated webhook); Graphlas 2.0 styling
 - [x] Live capture replaces Add document: meeting-title dissection and file-saved events (link + metadata only)
+- [x] Pitch review changes: generic sign-in + new logins, change/undo votes, narrower approvals, retraining permissions, health per department, "what can I ask" and "why trust the score" explanations
 - [ ] React UI polish (after the team answers the UI questions)
 - [ ] Aikido baseline scan (early) and fix round (before 15:00)
 - [ ] Pitch (ppt/pdf, 3 min) and demo fallback

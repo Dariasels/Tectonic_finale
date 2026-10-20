@@ -132,6 +132,13 @@ def inject_heroes(t, seed=11):
     t["persons"] = P.reset_index(drop=True)
     t["feedback"] = pd.concat([FB[~FB.doc_id.isin(drop_ids)], pd.DataFrame(new_fb, columns=FB.columns)], ignore_index=True)
     t["ground_truth"] = pd.concat([GT[~GT.doc_id.isin(drop_ids)], pd.DataFrame(new_gt, columns=GT.columns)], ignore_index=True)
-    t["_heroes"] = {"hr_senior": senior, "hr_medior": medior, "hr_junior": junior, "approver": appr,
+    be_eng = P[(P.country == "BE") & (P.department == "Engineering")].team_id.iloc[0]
+    be_lead = P[(P.country == "BE") & (P.role == "Country Lead")].index[0]
+    nid = f"P{int(P.index.str[1:].astype(int).max()) + 1:05d}"
+    admin = pd.DataFrame([{"person_id": nid, "name": "Sam Admin", "department": "Engineering", "country": "BE", "role": "System Admin",
+                           "level": "Admin", "team_id": be_eng, "reports_to": be_lead, "team_lead": False, "active": True,
+                           "previous_department": "", "opt_in_signals": False}])
+    t["persons"] = pd.concat([t["persons"], admin], ignore_index=True)
+    t["_heroes"] = {"admin": nid, "hr_senior": senior, "hr_medior": medior, "hr_junior": junior, "approver": appr,
                     "es_sales": es.index[0], "be_cs": be_cs, "pension_expert": expert, "nl_cs_left": nl_cs}
     return t

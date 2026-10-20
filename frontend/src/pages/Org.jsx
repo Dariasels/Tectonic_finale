@@ -3,6 +3,7 @@ import { api, errText } from '../api'
 import { Card, Chip, ErrorBox, HealthBar, Loading } from '../ui'
 
 export default function Org() {
+  const [view, setView] = useState('country')       // company-wide view: by country or by department
   const [path, setPath] = useState([])          // [] -> countries, [cc] -> departments, [cc, dept] -> teams, [cc, dept, team] -> team
   const [data, setData] = useState(null)
   const [risks, setRisks] = useState([])
@@ -11,10 +12,10 @@ export default function Org() {
   useEffect(() => {
     setData(null)
     const [cc, dept, team] = path
-    const req = team ? api.orgTeam(team) : dept ? api.orgDepartment(cc, dept) : cc ? api.orgCountry(cc) : api.orgOverview()
+    const req = team ? api.orgTeam(team) : dept ? api.orgDepartment(cc, dept) : cc ? api.orgCountry(cc) : view === 'department' ? api.orgDepartments() : api.orgOverview()
     req.then(setData).catch((e) => setError(errText(e)))
     api.risks(cc).then(setRisks).catch(() => {})
-  }, [path])
+  }, [path, view])
 
   const crumbs = ['Europe', ...path]
   return (
@@ -23,6 +24,13 @@ export default function Org() {
         <h2 className="text-[26px] font-extrabold">Organisation</h2>
         <p className="text-sm text-muted">Health = average trust score of the documents a unit owns. Click to drill down: country, department, team.</p>
       </div>
+      {path.length === 0 && (
+        <div className="flex gap-2 text-sm" role="tablist">
+          {[['country', 'By country'], ['department', 'By department']].map(([k, l]) => (
+            <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} className={`rounded-lg px-3 py-1.5 font-medium ${view === k ? 'border-b-2 border-magenta bg-surface' : 'text-muted hover:bg-surface'}`}>{l}</button>
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap gap-1 text-sm">
         {crumbs.map((c, i) => <button key={i} onClick={() => setPath(path.slice(0, i))} className="text-accent hover:underline">{c}{i < crumbs.length - 1 ? ' /' : ''}</button>)}
       </div>
@@ -30,7 +38,8 @@ export default function Org() {
       {!data ? <Loading /> : (
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            {Array.isArray(data) && <Table rows={data} cols={['name', 'people', 'teams', 'docs']} onPick={(r) => setPath([r.country])} />}
+            {Array.isArray(data) && view === 'country' && <Table rows={data} cols={['name', 'people', 'teams', 'docs']} onPick={(r) => setPath([r.country])} />}
+            {Array.isArray(data) && view === 'department' && <Table rows={data} cols={['department', 'people', 'teams', 'docs']} onPick={() => {}} />}
             {data.departments && <Table rows={data.departments} cols={['department', 'people', 'teams', 'docs']} onPick={(r) => setPath([path[0], r.department])} />}
             {data.teams && !data.worst_documents && <Table rows={data.teams} cols={['name', 'people', 'docs']} onPick={(r) => setPath([...path, r.team_id])} />}
             {data.worst_documents && (

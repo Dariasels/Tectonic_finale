@@ -28,7 +28,7 @@ class IngestMixin:
         self.ingest_ms = []
         self.pending_ids = set()
         self.event_log = []
-        self.seen_votes = set()
+        self.user_votes = {}                  # (doc_id, user_id) -> 'confirm' | 'flag'
 
     # --------------------------------------------------------------- ingestion
     def ingest(self, payload, user_id):
@@ -122,8 +122,6 @@ class IngestMixin:
             if verified_conflict:
                 y = verified_conflict[0]
                 why.append(f"Contradicts verified document {y}: '{key_value}' versus '{self.docs.key_value[y]}'")
-            elif diff:
-                why.append(f"Contradicts {len(diff)} existing document(s) on the same topic and country")
             if abs(p - 0.5) < UNSURE and not is_meeting:
                 why.append("The model is unsure about this document")
             if classified and classified["confidence"] < TOPIC_CONF:
@@ -255,18 +253,30 @@ class IngestMixin:
 
     # -------------------------------------------------------------------- votes
     def vote(self, doc_id, user_id, kind):
+        """Confirm or flag a document. Choosing the other option changes the vote; choosing the same one again undoes it."""
         with self.lock:
-            if kind not in ("confirm", "flag"):
-                raise ValueError("kind must be confirm or flag")
+            if kind not in ("confirm", "flag", "none"):
+                raise ValueError("kind must be confirm, flag or none")
             d = self.docs.loc[doc_id]
             if not self.can_see(user_id, d):
                 raise PermissionError("no access to this document")
-            if (doc_id, user_id) in self.seen_votes:
-                raise ValueError("already voted")
-            self.seen_votes.add((doc_id, user_id))
-            self.votes.setdefault(doc_id, {"confirm": 0, "flag": 0})[kind] += 1
-            self.extra_labels.setdefault(doc_id, 0 if kind == "confirm" else 1)
-            return self.doc_json(d)
+            prev = self.user_votes.get((doc_id, user_id))
+            new = None if kind in ("none", prev) else kind
+            v = self.votes.setdefault(doc_id, {"confirm": 0, "flag": 0})
+            if prev:
+                v[prev] -= 1
+            if new:
+                v[new] += 1
+                self.user_votes[(doc_id, user_id)] = new
+            else:
+                self.user_votes.pop((doc_id, user_id), None)
+            if v["confirm"] > v["flag"]:                       # the implicit label follows the majority
+                self.extra_labels[doc_id] = 0
+            elif v["flag"] > v["confirm"]:
+                self.extra_labels[doc_id] = 1
+            else:
+                self.extra_labels.pop(doc_id, None)
+            return {**self.doc_json(d), "my_vote": new}
 
     # ------------------------------------------------------ resolution memory
     def resolve(self, user_id, topic, country, client, person_id=None, doc_id=None):
@@ -340,6 +350,10 @@ class IngestMixin:
                 "log": self.retrain_log[-5:], "model_auc_cv": round(self.cv_auc, 3),
                 "n_labels": self.n_labels}
 
+    def can_retrain(self, user_id):
+        """Retraining is limited to higher management (country lead, department head) and the system admin."""
+        return user_id in self.persons.index and self.persons.level[user_id] in ("Lead", "Head", "Admin")
+
     def retrain(self, reason="manual"):
         with self.lock:
             before = self.trust.copy()
@@ -357,7 +371,9 @@ class IngestMixin:
                                      "scores_changed_over_5_points": int((changed > 5).sum())})
             return self.retrain_log[-1]
 
-    def set_policy(self, **kw):
+    def set_policy(self, user_id=None, **kw):
+        if user_id is not None and not self.can_retrain(user_id):
+            raise PermissionError("only higher management and the system admin can change the retraining policy")
         for k, v in kw.items():
             if k in self.policy and v is not None:
                 self.policy[k] = type(self.policy[k])(v)

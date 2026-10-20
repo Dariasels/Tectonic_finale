@@ -49,7 +49,7 @@ class EditDoc(BaseModel):
 
 class Vote(BaseModel):
     user_id: str = Field(pattern=r"^P\d{5}$")
-    kind: str = Field(pattern="^(confirm|flag)$")
+    kind: str = Field(pattern="^(confirm|flag|none)$")
 
 
 class Decision(BaseModel):
@@ -96,7 +96,22 @@ class MeetingEvent(BaseModel):
     link: Optional[str] = Field(default=None, max_length=300, pattern=r"^https?://")
 
 
+class Signup(BaseModel):
+    name: str = Field(min_length=2, max_length=60)
+    country: str = Field(max_length=3)
+    department: str = Field(max_length=40)
+    level: str = Field(max_length=12)
+    team_id: Optional[str] = Field(default=None, max_length=24)
+    new_team_name: Optional[str] = Field(default=None, max_length=60)
+    team_tools: Optional[list[str]] = Field(default=None, max_length=6)
+
+
+class Actor(BaseModel):
+    user_id: str = Field(pattern=r"^P\d{5}$")
+
+
 class Policy(BaseModel):
+    user_id: str = Field(pattern=r"^P\d{5}$")
     auto: Optional[bool] = None
     min_new_docs: Optional[int] = Field(default=None, ge=1, le=10000)
     max_days: Optional[int] = Field(default=None, ge=1, le=90)
@@ -181,6 +196,11 @@ def org_overview():
     return eng().org_overview()
 
 
+@app.get("/api/org/departments")
+def org_departments():
+    return eng().org_departments()
+
+
 @app.get("/api/org/country/{cc}")
 def org_country(cc: str):
     return call(eng().org_country, cc.upper())
@@ -202,18 +222,41 @@ def risks(country: Optional[str] = Query(None, max_length=3)):
 
 
 @app.get("/api/model/status")
-def model_status():
-    return eng().retrain_status()
+def model_status(user_id: Optional[str] = Query(None, pattern=r"^P\d{5}$")):
+    return {**eng().retrain_status(), "can_retrain": bool(user_id and eng().can_retrain(user_id)),
+            "who_can_retrain": "Higher management (country leads, department heads) and the system admin."}
 
 
 @app.post("/api/model/retrain")
-def model_retrain():
+def model_retrain(b: Actor):
+    if not eng().can_retrain(b.user_id):
+        raise HTTPException(403, "only higher management and the system admin can retrain the model")
     return eng().retrain("manual")
 
 
 @app.post("/api/model/settings")
 def model_settings(b: Policy):
-    return eng().set_policy(**b.model_dump())
+    return call(eng().set_policy, **b.model_dump())
+
+
+@app.get("/api/validation")
+def validation():
+    return eng().validation()
+
+
+@app.get("/api/people/search")
+def people_search(q: str = Query("", max_length=60)):
+    return eng().search_people(q)
+
+
+@app.get("/api/signup/options")
+def signup_options(country: str = Query(..., max_length=3), department: str = Query(..., max_length=40)):
+    return call(eng().signup_options, country.upper(), department)
+
+
+@app.post("/api/signup")
+def signup(b: Signup):
+    return call(eng().signup, b.name, b.country.upper(), b.department, b.level, b.team_id, b.new_team_name, b.team_tools)
 
 
 @app.get("/api/scale")

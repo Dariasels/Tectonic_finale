@@ -57,13 +57,45 @@ def test_hidden_document_is_forbidden(client, mut, ids):
 
 def test_wrong_approver_gets_403(client, mut, ids):
     h = mut.heroes
-    r = client.post("/api/events/document", json={"user_id": h["hr_senior"], "source": "SharePoint", "title": "Sick leave Belgium",
-                                                    "topic_id": "sick_leave", "country": "BE", "key_value": "certificate after 9 days",
-                                                    "extract": "Sick leave. Rule: certificate after 9 days."}).json()
-    if r["status"] == "pending_approval":
-        aid = r["approval"]["approval_id"]
-        assert client.post(f"/api/approvals/{aid}/decision", json={"user_id": ids["dev"], "decision": "approve"}).status_code == 403
-        assert client.post(f"/api/approvals/{aid}/decision", json={"user_id": r["approval"]["requested_from"], "decision": "maybe"}).status_code == 422
+    r = client.post("/api/events/document", json={"user_id": h["hr_senior"], "source": "SharePoint", "title": "Parental leave Belgium update",
+                                                    "topic_id": "parental_leave", "country": "BE", "key_value": "19 weeks per parent",
+                                                    "extract": "Parental leave. Rule: 19 weeks per parent."}).json()
+    assert r["status"] == "pending_approval"                       # contradicts the verified policy
+    aid = r["approval"]["approval_id"]
+    assert client.post(f"/api/approvals/{aid}/decision", json={"user_id": ids["dev"], "decision": "approve"}).status_code == 403
+    assert client.post(f"/api/approvals/{aid}/decision", json={"user_id": r["approval"]["requested_from"], "decision": "maybe"}).status_code == 422
+
+
+def test_retraining_needs_management_or_admin(client, mut, ids):
+    assert client.post("/api/model/retrain", json={"user_id": ids["hr"]}).status_code == 403
+    assert client.post("/api/model/settings", json={"user_id": ids["dev"], "auto": False}).status_code == 403
+    assert client.get("/api/model/status", params={"user_id": ids["hr"]}).json()["can_retrain"] is False
+    assert client.get("/api/model/status", params={"user_id": mut.heroes["admin"]}).json()["can_retrain"] is True
+    assert client.post("/api/model/settings", json={"user_id": ids["lead"], "min_new_docs": 0}).status_code == 422
+
+
+def test_vote_endpoint_toggles(client, ids):
+    p = {"user_id": ids["pay"], "kind": "flag"}
+    assert client.post("/api/documents/H002/vote", json=p).json()["my_vote"] == "flag"
+    assert client.post("/api/documents/H002/vote", json=p).json()["my_vote"] is None
+    assert client.post("/api/documents/H002/vote", json={**p, "kind": "love"}).status_code == 422
+
+
+def test_signup_and_people_endpoints(client):
+    opt = client.get("/api/signup/options", params={"country": "BE", "department": "HR Advisory"}).json()
+    team = opt["teams"][0]["team_id"]
+    ok = client.post("/api/signup", json={"name": "Api Person", "country": "BE", "department": "HR Advisory", "level": "Medior", "team_id": team})
+    assert ok.status_code == 200 and ok.json()["person"]["name"] == "Api Person"
+    assert client.post("/api/signup", json={"name": "A", "country": "BE", "department": "HR Advisory", "level": "Medior", "team_id": team}).status_code == 422
+    assert client.post("/api/signup", json={"name": "Api Person", "country": "BE", "department": "HR Advisory", "level": "Medior"}).status_code == 400
+    assert client.get("/api/signup/options", params={"country": "ZZ", "department": "HR Advisory"}).status_code == 400
+    assert any(p["name"] == "Api Person" for p in client.get("/api/people/search", params={"q": "api person"}).json())
+    assert client.get("/api/people/search", params={"q": "x" * 61}).status_code == 422
+
+
+def test_validation_and_department_endpoints(client):
+    assert client.get("/api/validation").json()["top_answer_correct"]["graphlas"] > 0.8
+    assert len(client.get("/api/org/departments").json()) == 9
 
 
 def test_profile_rules_over_http(client, ids):

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, ChevronDown, ChevronUp, Flag, Search as SearchIcon, ShieldCheck, ThumbsUp, UserCheck, Users } from 'lucide-react'
 import { api, errText } from '../api'
 import { useUser } from '../user'
+import ScoreProof from '../ScoreProof'
 import { Button, Card, Chip, ErrorBox, Reasons, SourceChip, TrustBadge } from '../ui'
 
 const FEATURED = [
@@ -29,7 +30,7 @@ function ResultCard({ r, user, intent, onChanged }) {
     try {
       const updated = await api.vote(r.doc_id, user.person_id, kind)
       onChanged(updated)
-      setMsg(kind === 'confirm' ? 'Thanks, confirmed.' : 'Thanks, flagged.')
+      setMsg(updated.my_vote === 'confirm' ? 'You confirmed this. Click again to undo.' : updated.my_vote === 'flag' ? 'You flagged this. Click again to undo.' : 'Your vote was removed.')
     } catch (e) { setMsg(errText(e)) }
   }
   return (
@@ -70,8 +71,8 @@ function ResultCard({ r, user, intent, onChanged }) {
             </div>
           )}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => vote('confirm')}><ThumbsUp className="h-4 w-4" />Confirm</Button>
-            <Button variant="ghost" onClick={() => vote('flag')}><Flag className="h-4 w-4" />Flag as wrong</Button>
+            <Button variant="ghost" aria-pressed={r.my_vote === 'confirm'} className={r.my_vote === 'confirm' ? 'ring-2 ring-ok' : ''} onClick={() => vote('confirm')}><ThumbsUp className="h-4 w-4" />Confirm</Button>
+            <Button variant="ghost" aria-pressed={r.my_vote === 'flag'} className={r.my_vote === 'flag' ? 'ring-2 ring-bad' : ''} onClick={() => vote('flag')}><Flag className="h-4 w-4" />Flag as wrong</Button>
             <span className="text-sm text-muted">{msg}</span>
           </div>
         </div>
@@ -148,8 +149,11 @@ export default function Search() {
   const inputRef = useRef(null)
   const { users, setUser } = useUser()
   const [library, setLibrary] = useState([])
+  const [meta, setMeta] = useState(null)
+  const [showHelp, setShowHelp] = useState(false)
+  const [showProof, setShowProof] = useState(false)
   const [showLib, setShowLib] = useState(false)
-  useEffect(() => { api.questions().then(setLibrary).catch(() => {}) }, [])
+  useEffect(() => { api.questions().then(setLibrary).catch(() => {}); api.meta().then(setMeta).catch(() => {}) }, [])
 
   const run = async (text, asUserId) => {
     if (!user) return
@@ -182,6 +186,31 @@ export default function Search() {
         {FEATURED.map((ex) => <button key={ex} onClick={() => { setQ(ex); run(ex) }} className="rounded-full bg-surface px-3 py-1 text-sm text-muted ring-1 ring-line hover:bg-soft">{ex}</button>)}
         {library.length > 0 && <button onClick={() => setShowLib(!showLib)} className="rounded-full px-3 py-1 text-sm font-medium text-accent hover:underline">{showLib ? 'Hide' : `More example questions (${library.length})`}</button>}
       </div>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <button onClick={() => setShowHelp(!showHelp)} className="font-medium text-accent hover:underline">{showHelp ? 'Hide' : 'What can I ask?'}</button>
+        <button onClick={() => setShowProof(!showProof)} className="font-medium text-accent hover:underline">{showProof ? 'Hide' : 'Why can I trust the score?'}</button>
+      </div>
+      {showProof && <ScoreProof compact />}
+      {showHelp && meta && (
+        <Card className="space-y-3 text-sm">
+          <p>Graphlas answers from a graph of the company: <b>{meta.topics.length} topics</b>, <b>{meta.clients.length} customers</b>, <b>{meta.countries.length} countries</b>, and the documents and people connected to them. Ask in your own words; these forms work best:</p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li><b>Topic and country:</b> "parental leave in Belgium". The country narrows the graph to that branch. Without one, your own country is used.</li>
+            <li><b>Everything about a customer:</b> "What do we know about Nike?" The graph follows the customer to its agreements, meetings and the people who work with it.</li>
+            <li><b>Topic for a customer:</b> "payroll cut-off for Nike in Belgium". The customer's own agreement ranks above the general rule.</li>
+            <li><b>Who knows:</b> "Who knows the most about Nike?" People are linked to topics by what they wrote, approved, reviewed, attended and did with customers.</li>
+            <li><b>Not sure of the words?</b> A vague question such as "payroll" gets suggestions.</li>
+          </ul>
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase text-muted">Topics the graph knows</p>
+            <div className="flex flex-wrap gap-1.5">{meta.topics.filter((t) => !t.topic_id.startsWith('client_')).map((t) => <button key={t.topic_id} onClick={() => { setQ(t.name); run(t.name) }} className="rounded-full bg-soft px-2.5 py-0.5 text-xs hover:bg-line">{t.name}</button>)}</div>
+          </div>
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase text-muted">Customers</p>
+            <div className="flex flex-wrap gap-1.5">{meta.clients.map((c) => <button key={c.client_id} onClick={() => { const t = `What do we know about ${c.name}?`; setQ(t); run(t) }} className="rounded-full bg-soft px-2.5 py-0.5 text-xs hover:bg-line">{c.name}</button>)}</div>
+          </div>
+        </Card>
+      )}
       {showLib && (
         <Card className="space-y-3">
           <p className="text-xs text-muted">Each question switches to the colleague who would ask it, so you can see their access rights.</p>

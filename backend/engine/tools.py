@@ -1,5 +1,10 @@
 """Connected tools, personal preferences and the document-created event (simulated webhook)."""
+import re
 import time
+
+import pandas as pd
+
+from .seed_org import DEPTS
 
 SOURCES = ["SharePoint", "Teams", "OneDrive", "Notion", "GitHub", "Legacy drive"]
 OFFICIAL = {"SharePoint", "GitHub"}
@@ -49,6 +54,85 @@ class ToolsMixin:
         for t in self.teams.index:
             self.team_tools.setdefault(t, {"Teams"})
         self.onboarded = set()
+
+    # ----------------------------------------------------- sign-in and sign-up
+    LEVELS_SIGNUP = ["Junior", "Medior", "Senior", "Team Lead"]
+
+    def search_people(self, q, limit=10):
+        q = (q or "").strip().lower()
+        if len(q) < 2:
+            return []
+        hit = self.persons[self.persons.name.str.lower().str.contains(re.escape(q)) & self.persons.active]
+        hit = hit[hit.level.isin(["Junior", "Medior", "Senior", "Team Lead", "Head", "Lead", "Admin"])].head(limit)
+        return [self.person_card(p) for p in hit.index]
+
+    def signup_options(self, country, department):
+        if country not in self.countries.index or department not in DEPTS:
+            raise ValueError("unknown country or department")
+        t = self.teams[(self.teams.country == country) & (self.teams.department == department)]
+        return {"departments": list(DEPTS), "levels": self.LEVELS_SIGNUP, "sources": SOURCES,
+                "teams": [{"team_id": i, "name": r["name"], "has_lead": bool(r.lead_id), "people": len(self.team_people.get(i, [])),
+                           "tools": sorted(self.team_tools.get(i, []))} for i, r in t.iterrows()]}
+
+    def signup(self, name, country, department, level, team_id=None, new_team_name=None, team_tools=None):
+        """Create a new login. Joining a team needs no tools; a new team must be created by its team lead, who picks the tools."""
+        with self.lock:
+            name = re.sub(r"\s+", " ", (name or "").strip())
+            if not re.fullmatch(r"[A-Za-zÀ-ÿ' .-]{2,60}", name):
+                raise ValueError("enter a name of 2 to 60 letters")
+            if country not in self.countries.index or department not in DEPTS or level not in self.LEVELS_SIGNUP:
+                raise ValueError("unknown country, department or level")
+            if getattr(self, "_signups", 0) >= 200:
+                raise ValueError("sign-up limit reached for this demo")
+            if team_id:
+                if team_id not in self.teams.index or self.teams.country[team_id] != country or self.teams.department[team_id] != department:
+                    raise ValueError("that team does not belong to this country and department")
+                if level == "Team Lead" and self.teams.lead_id[team_id]:
+                    raise ValueError("this team already has a team lead")
+                created = False
+            else:
+                if level != "Team Lead":
+                    raise ValueError("only a team lead can create a new team")
+                nm = re.sub(r"\s+", " ", (new_team_name or "").strip())
+                if not 2 <= len(nm) <= 60:
+                    raise ValueError("give the new team a name")
+                tools = set(team_tools or [])
+                if not tools or not tools <= set(SOURCES):
+                    raise ValueError("choose at least one known tool for the new team")
+                prefix = f"T_{country}_{department[:3].upper()}_"
+                n = 1 + sum(str(i).startswith(prefix) for i in self.teams.index)
+                team_id = f"{prefix}{n}"
+                while team_id in self.teams.index:
+                    n += 1
+                    team_id = f"{prefix}{n}"
+                created = True
+            pid = f"P{int(self.persons.index.str[1:].astype(int).max()) + 1:05d}"
+            head = self.persons[(self.persons.country == country) & (self.persons.role == f"Head of {department}")]
+            boss = self.teams.lead_id.get(team_id, "") if not created else ""
+            reports = (boss if level != "Team Lead" and boss else (head.index[0] if len(head) else self.countries_lead(country))) or ""
+            row = {"person_id": pid, "name": name, "department": department, "country": country,
+                   "role": f"{department} Team Lead" if level == "Team Lead" else f"{level} {department} specialist",
+                   "level": level, "team_id": team_id, "reports_to": reports, "team_lead": level == "Team Lead", "active": True,
+                   "previous_department": "", "opt_in_signals": False}
+            if created:
+                trow = {"team_id": team_id, "name": f"{nm} ({self.countries.name[country]})", "department": department,
+                        "country": country, "lead_id": pid if level == "Team Lead" else ""}
+                self.teams = pd.concat([self.teams, pd.DataFrame([trow]).set_index("team_id", drop=False)])
+                self.t["teams"] = pd.concat([self.t["teams"], pd.DataFrame([trow])], ignore_index=True)
+                self.team_tools[team_id] = set(tools)
+                self.team_people[team_id] = []
+            elif level == "Team Lead":
+                self.teams.loc[team_id, "lead_id"] = pid
+            self.persons = pd.concat([self.persons, pd.DataFrame([row]).set_index("person_id", drop=False)])
+            self.t["persons"] = pd.concat([self.t["persons"], pd.DataFrame([row])], ignore_index=True)
+            self.reports_to[pid] = reports
+            self.team_people.setdefault(team_id, []).append(pid)
+            self._signups = getattr(self, "_signups", 0) + 1
+            tools = sorted(self.team_tools[team_id])
+            return {"person": self.person_card(pid), "team": {"team_id": team_id, "name": self.teams.name[team_id], "created": created},
+                    "can_edit_team": self.can_manage(pid, team_id),
+                    "connect_links": {s: f"https://graphlas.example/connect/{team_id}/{s.lower().replace(' ', '-')}" for s in tools},
+                    "note": "Connect links are simulated in this demo."}
 
     # ---------------------------------------------------------------- profile
     def can_manage(self, user_id, team_id):

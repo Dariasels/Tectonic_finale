@@ -71,6 +71,10 @@ class CoreEngine:
         d["created"] = d.created.dt.date.astype(str)
         self.t["documents"] = d[cols].reset_index(drop=True)
         self.t["edges"] = self.edges
+        pc = list(self.t["persons"].columns)
+        self.t["persons"] = self.persons[pc].reset_index(drop=True)
+        tc = list(self.t["teams"].columns)
+        self.t["teams"] = self.teams[tc].reset_index(drop=True)
 
     def rebuild(self):
         """Full rebuild: graph metrics, expertise, features, model, scores. Timed for the scale demo."""

@@ -63,18 +63,134 @@ def test_nothing_trustworthy_means_ask_an_expert(mut, ids):
     assert r["ask_expert"] and r["experts"]
 
 
-def test_votes_one_per_user_and_acl(mut, ids):
+def test_vote_can_be_changed_and_undone(mut, ids):
     mut.votes.pop("H003", None)
-    before = mut.final_trust(mut.docs.loc["H003"], "BE")[0]
-    mut.vote("H003", ids["hr"], "confirm")
-    after = mut.final_trust(mut.docs.loc["H003"], "BE")[0]
-    assert after == pytest.approx(min(100, before + 4))
-    with pytest.raises(ValueError):
-        mut.vote("H003", ids["hr"], "confirm")
+    base = mut.final_trust(mut.docs.loc["H003"], "BE")[0]
+    assert mut.vote("H003", ids["hr"], "confirm")["my_vote"] == "confirm"
+    assert mut.final_trust(mut.docs.loc["H003"], "BE")[0] == pytest.approx(min(100, base + 4))
+    assert mut.vote("H003", ids["hr"], "flag")["my_vote"] == "flag"                   # changed their mind
+    assert mut.votes["H003"] == {"confirm": 0, "flag": 1}
+    assert mut.final_trust(mut.docs.loc["H003"], "BE")[0] == pytest.approx(max(0, base - 8))
+    assert mut.vote("H003", ids["hr"], "flag")["my_vote"] is None                     # same choice again undoes it
+    assert mut.votes["H003"] == {"confirm": 0, "flag": 0} and "H003" not in mut.extra_labels
+    assert mut.final_trust(mut.docs.loc["H003"], "BE")[0] == pytest.approx(base)
     hidden = mut.docs[mut.docs.acl.str.startswith("dept:")].index[0]
     with pytest.raises(PermissionError):
         mut.vote(hidden, ids["dev"], "flag")
     mut.votes.pop("H003", None)
+
+
+def test_my_vote_is_returned_in_search(mut, ids):
+    mut.vote("H001", ids["hr"], "confirm")
+    r = mut.search("parental leave Belgium", ids["hr"])
+    assert {x["doc_id"]: x["my_vote"] for x in r["results"]}.get("H001") in ("confirm", None)
+    mut.vote("H001", ids["hr"], "none")
+
+
+def test_conflict_with_an_unverified_document_alone_needs_no_approval(mut):
+    keyed = mut.docs[(mut.docs.key_value != "") & (mut.docs.client == "") & (mut.docs.country != "ALL")]
+    grp = next(g for _, g in keyed.groupby(["topic_id", "country"]) if len(g) >= 2 and not g.verified.any())
+    topic, country = grp.topic_id.iloc[0], grp.country.iloc[0]
+    author = next(p for p in mut.persons.index if mut.persons.country[p] == country and mut.persons.active[p]
+                  and mut.persons.level[p] in ("Junior", "Medior", "Senior") and mut.persons.team_id[p] in mut.team_tools
+                  and "SharePoint" in mut.team_tools[mut.persons.team_id[p]])
+    res = mut.ingest_event(author, {"source": "SharePoint", "title": f"{mut.topics.name[topic]} update", "topic_id": topic, "country": country,
+                                    "key_value": "99 something else", "extract": f"{mut.topics.name[topic]}. Rule: 99 something else."})
+    assert res["status"] != "duplicate"
+    if res["status"] == "pending_approval":            # allowed only for other reasons (model unsure, topic unclear)
+        assert all("Contradicts" not in r for r in res["approval"]["reasons"]), res["approval"]["reasons"]
+
+
+def test_retraining_is_limited_to_management_and_admin(mut, ids):
+    h = mut.heroes
+    assert mut.can_retrain(h["admin"])
+    assert mut.can_retrain(ids["lead"])
+    head = mut.persons.index[mut.persons.level == "Head"][0]
+    assert mut.can_retrain(head)
+    for who in ("hr", "dev", "pay", "es"):
+        assert not mut.can_retrain(ids[who])
+    with pytest.raises(PermissionError):
+        mut.set_policy(user_id=ids["hr"], auto=False)
+    assert mut.set_policy(user_id=ids["lead"], auto=True)["auto"] is True
+
+
+def test_sign_up_joins_a_team(mut):
+    opt = mut.signup_options("BE", "HR Advisory")
+    team = next(t for t in opt["teams"] if t["has_lead"])
+    n = len(mut.persons)
+    r = mut.signup("Nora Test", "BE", "HR Advisory", "Junior", team_id=team["team_id"])
+    pid = r["person"]["person_id"]
+    assert len(mut.persons) == n + 1 and mut.persons.team_id[pid] == team["team_id"]
+    assert mut.reports_to[pid] == mut.teams.lead_id[team["team_id"]]                  # reports to the team lead
+    assert not r["can_edit_team"] and pid in mut.team_people[team["team_id"]]
+    assert mut.search("parental leave Belgium", pid)["results"]
+    assert mut.profile(pid)["team"]["team_id"] == team["team_id"]
+    assert not mut.persons.opt_in_signals[pid]                                       # signals are off until chosen
+    assert mut.search_people("nora test")[0]["person_id"] == pid
+    # their uploads are approved by someone above them
+    res = mut.ingest_event(pid, {"source": "SharePoint", "title": "Parental leave Belgium note", "topic_id": "parental_leave", "country": "BE",
+                                 "key_value": "30 weeks per parent", "extract": "Parental leave. Rule: 30 weeks per parent."})
+    if res["status"] == "pending_approval":
+        chain = [mut.teams.lead_id[team["team_id"]]]                      # first ACTIVE person above the new colleague
+        while chain[-1] and chain[-1] in mut.reports_to:
+            chain.append(mut.reports_to[chain[-1]])
+        first_active = next(x for x in chain if x and mut.persons.active[x])
+        assert res["approval"]["requested_from"] == first_active
+
+
+def test_team_lead_can_create_a_team_with_tools(mut):
+    r = mut.signup("Tim Lead", "BE", "Marketing", "Team Lead", new_team_name="Growth", team_tools=["Notion", "Teams"])
+    pid, tid = r["person"]["person_id"], r["team"]["team_id"]
+    assert r["team"]["created"] and r["can_edit_team"] and mut.teams.lead_id[tid] == pid
+    assert mut.team_tools[tid] == {"Notion", "Teams"} and set(r["connect_links"]) == {"Notion", "Teams"}
+    assert all(u.startswith("https://") for u in r["connect_links"].values())
+    assert mut.reports_to[pid] and mut.persons.role[mut.reports_to[pid]] == "Head of Marketing"
+    assert any("official source" in w for w in mut.tool_warnings(tid))                # Notion + Teams only
+    with pytest.raises(ValueError):
+        mut.signup("Second Lead", "BE", "Marketing", "Team Lead", team_id=tid)       # the team already has a lead
+
+
+def test_sign_up_rules(mut):
+    team = mut.signup_options("BE", "HR Advisory")["teams"][0]["team_id"]
+    for bad in (dict(name="x"), dict(name="<script>"), dict(name="Ok Name", country="ZZ"), dict(name="Ok Name", department="Nope"),
+                dict(name="Ok Name", level="CEO")):
+        kw = dict(name="Ok Name", country="BE", department="HR Advisory", level="Junior", team_id=team) | bad
+        with pytest.raises(ValueError):
+            mut.signup(**kw)
+    with pytest.raises(ValueError):                                                   # a junior cannot create a team
+        mut.signup("Ok Name", "BE", "Marketing", "Junior", new_team_name="Mine", team_tools=["Teams"])
+    with pytest.raises(ValueError):                                                   # a team of another country or department
+        mut.signup("Ok Name", "NL", "HR Advisory", "Junior", team_id=team)
+    with pytest.raises(ValueError):
+        mut.signup("Ok Name", "BE", "Marketing", "Team Lead", new_team_name="Mine", team_tools=[])
+
+
+def test_people_search(mut):
+    assert mut.search_people("a") == []                                               # too short
+    hits = mut.search_people("sofie")
+    assert hits and all("sofie" in h["name"].lower() and h["active"] for h in hits) and len(hits) <= 10
+
+
+def test_signed_up_people_survive_a_retrain(mut):
+    pid = mut.search_people("nora test")[0]["person_id"]
+    mut.retrain("test")
+    assert pid in mut.persons.index and mut.persons.name[pid] == "Nora Test"
+
+
+def test_health_per_department_and_country(mut):
+    dep = mut.org_departments()
+    assert len(dep) == 9 and all(0 <= x["health"] <= 100 for x in dep)
+    assert sum(x["docs"] for x in dep) <= len(mut.docs)
+    assert len(mut.org_overview()) == 26
+
+
+def test_validation_explains_why_the_score_is_reliable(mut):
+    v = mut.validation()
+    top = v["top_answer_correct"]
+    assert top["graphlas"] > top["random_pick"] + 0.2 and top["graphlas"] >= top["newest_document"] and top["graphlas"] > top["most_linked_document"]
+    b = {x["band"]: x["state_the_current_value"] for x in v["bands"]}
+    assert b["green"] > b["yellow"] > b["red"] and b["green"] > 0.9 and b["red"] < 0.4
+    assert v["auc_vs_truth"] > 0.9 and v["groups"] > 300
 
 
 def payload(**kw):
