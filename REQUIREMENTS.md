@@ -42,6 +42,9 @@ Keep the graph + ML scoring core. Move the front end to **React**, keep Python f
 | Resolution memory | A confirmed contact/document is stored per intent so the next person skips the search; also feeds retraining as implicit labels |
 | Beyond documents | "Who knows?" expert finding from the graph (roles, hierarchy, signals); team leads listed everywhere must not distort results |
 
+## 4b. Retraining rule (decided)
+Retrain at 100 new/materially changed documents (about 1% of the corpus) or after 7 days, whichever first; minimum 24 h between runs; global on/off switch. New document or material edit = 1; cosmetic edit or duplicate = 0. New documents are scored immediately without retraining.
+
 ## 5. Functional requirements
 _To be filled after the interview and scope decision._
 | ID | Requirement | Priority | Status |
@@ -83,7 +86,7 @@ _To be filled after the interview and scope decision._
 - [x] Company interview received (26 countries, 10k staff, layer on top of Teams/SharePoint/OneDrive/shared drives/legacy, access rights, who-knows-what, no handover protocol)
 - [ ] Scope decision: MVP = find/trust + keep-it-trusted loop (incremental scoring, dedup, hierarchy approval, expert finder, ACL, org drill-down, scale data); handover brief later
 - [x] Mock generator `backend/engine/seed_org.py` (10.3k people, 26 countries, 935 teams, 9.6k docs, 6 sources, 84k edges, ACL, signals)
-- [ ] Port GRAPHLAS engine into `backend/` behind FastAPI
+- [x] Engine ported into `backend/engine/` (core, queries, ingest, heroes) behind FastAPI; endpoints in docs/TECHNICAL.md; scenarios: parental leave BE, pension BE, Nike; ingest 40 ms vs rebuild 6 s
 - [ ] React UI
 - [ ] Aikido baseline scan (early) and fix round (before 15:00)
 - [ ] Pitch (ppt/pdf, 3 min) and demo fallback

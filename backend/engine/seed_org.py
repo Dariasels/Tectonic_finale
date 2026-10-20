@@ -280,7 +280,7 @@ def gen(n_people=10000, n_notes=5000, seed=7):
     cids = {c: f"C{i + 1:02d}" for i, c in enumerate(CLIENTS)}
     clist = list(COUNTRIES)
     for c, cid in cids.items():
-        ctrs = list(rng.choice(clist[:12], 3, replace=False))
+        ctrs = ["BE", "NL", "ES"] if cid == "C01" else list(rng.choice(clist[:12], 3, replace=False))
         for t, (name, fmt, lo, hi) in CLIENT_TOPICS.items():
             for cc in ctrs:
                 g = make_group(t, cc, cid, "Customer Success", fmt, lo, hi, "customer", name)
@@ -392,6 +392,8 @@ def gen(n_people=10000, n_notes=5000, seed=7):
     for d in docs:
         views = int(rng.integers(5, 120))
         rate = (0.12 if d["stated_current"] else 0.55) + rng.normal(0, 0.07)
+        if not persons.active[d["owner_id"] or d["author_id"]]:       # colleagues distrust documents nobody maintains
+            rate += 0.3
         rate = float(np.clip(rate, 0, 1))
         flags = int(rng.binomial(views, rate))
         fb.append((d["doc_id"], views, flags, round(flags / views, 3), int(flags / views >= 0.35)))
