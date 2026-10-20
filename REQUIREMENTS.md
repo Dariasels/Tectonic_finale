@@ -78,6 +78,7 @@ _To be filled after the interview and scope decision._
 | 2026-10-20 | One property graph with org tree inside (Country > Department > Team nodes), not nested graphs | Trust signals cross team/country borders; team score is a roll-up of document scores |
 | 2026-10-20 | No live URL; demo video in the ppt | Organizers: not required; own devices not allowed |
 | 2026-10-20 | Handover brief postponed (later, nice to have) | Team decision |
+| 2026-10-20 | Product name and look: Graphlas 2.0 (header gradient orange to purple, Montserrat, status dots) | Team styling spec; replaces the yellow-to-blue SD Worx look |
 | 2026-10-20 | `context/` is git-ignored | 55 MB partner PDF should not go in a public repo |
 
 ## 10. Status

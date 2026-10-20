@@ -59,7 +59,7 @@ All data is simulated: 10,261 people, 26 countries, 935 teams, ~9,600 documents 
 3. **Upload / template**: questionnaire (title, topic, country, customer, valid until, source), result shows published / needs approval / duplicate, with `timings_ms`.
 4. **Organisation**: Country -> Department -> Team drill-down coloured by `health`, risks list.
 5. **Model and scale**: retraining progress bar (`new_since_train / threshold`), policy switch, rebuild vs ingest timings.
-Theme: SD Worx yellow-to-blue gradient.
+Theme: Graphlas 2.0 (orange-to-purple header gradient, Montserrat, trust shown as green/yellow/red dots).
 
 ## 6. Honest limits (say them in the pitch)
 Data and user feedback are simulated; the AUC (~0.95) shows the pipeline works, not real-world accuracy. Topic classification uses templated text. Graph metrics for a brand-new document are approximate until the next retrain. No real login. Connectors to Teams/SharePoint/OneDrive/Notion/GitHub are mocked; swapping in real APIs changes only the input, not the graph or the model.

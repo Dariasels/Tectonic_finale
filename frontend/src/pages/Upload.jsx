@@ -4,7 +4,7 @@ import { useUser } from '../user'
 import { Button, Card, Chip, ErrorBox, TrustBadge } from '../ui'
 
 const empty = { title: '', text: '', source: 'SharePoint', topic_id: '', country: '', client: '', key_value: '' }
-const field = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-sdw-blue'
+const field = 'w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent'
 
 export default function Upload() {
   const { user, setUser } = useUser()
@@ -44,8 +44,8 @@ export default function Upload() {
     <div className="grid gap-4 lg:grid-cols-2">
       <form onSubmit={submit} className="space-y-3">
         <div>
-          <h2 className="text-xl font-semibold">Add a document</h2>
-          <p className="text-sm text-slate-500">A template for new HR documents. In real life this happens in the tools people already use; the system reads it from there.</p>
+          <h2 className="text-[26px] font-extrabold">Add a document</h2>
+          <p className="text-sm text-muted">A template for new HR documents. In real life this happens in the tools people already use; the system reads it from there.</p>
         </div>
         <select className={field} onChange={(e) => loadSample(e.target.value)} defaultValue="">
           <option value="">Load a demo example...</option>
@@ -85,12 +85,12 @@ export default function Upload() {
               <Chip>{res.timings_ms} ms</Chip>
             </div>
             {res.classified && <p className="mt-2 text-sm">Topic detected: <b>{res.classified.topic_name}</b> ({Math.round(res.classified.confidence * 100)}% sure)</p>}
-            {res.message && <p className="mt-2 text-sm text-slate-600">{res.message}</p>}
-            {res.document && <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-50 p-3 text-sm"><span>{res.document.title}<br /><span className="text-slate-500">{res.document.key_value}</span></span><TrustBadge badge={res.document.badge} score={res.document.trust} /></div>}
+            {res.message && <p className="mt-2 text-sm text-muted">{res.message}</p>}
+            {res.document && <div className="mt-3 flex items-center justify-between rounded-lg bg-soft p-3 text-sm"><span>{res.document.title}<br /><span className="text-muted">{res.document.key_value}</span></span><TrustBadge badge={res.document.badge} score={res.document.trust} /></div>}
             {res.approval && (
               <div className="mt-3 space-y-2 text-sm">
                 <p>Sent to <b>{res.approval.approver.name}</b> ({res.approval.approver.role}), one level above the author.</p>
-                <ul className="list-disc pl-5 text-slate-700">{res.approval.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+                <ul className="list-disc pl-5 text-main">{res.approval.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
                 <Button variant="ghost" onClick={switchToApprover}>Switch to {res.approval.approver.name} to approve</Button>
               </div>
             )}
@@ -99,7 +99,7 @@ export default function Upload() {
         {scale && (
           <Card>
             <h3 className="font-semibold">Why this is fast</h3>
-            <p className="mt-1 text-sm text-slate-600">A new document is scored by the existing model: {scale.last_ingest_ms ?? 'about 40'} ms. A full rebuild of {scale.documents.toLocaleString()} documents takes {scale.full_rebuild_seconds} s{scale.speedup ? `, so ${scale.speedup}x slower` : ''}. Nobody has to annotate anything.</p>
+            <p className="mt-1 text-sm text-muted">A new document is scored by the existing model: {scale.last_ingest_ms ?? 'about 40'} ms. A full rebuild of {scale.documents.toLocaleString()} documents takes {scale.full_rebuild_seconds} s{scale.speedup ? `, so ${scale.speedup}x slower` : ''}. Nobody has to annotate anything.</p>
           </Card>
         )}
       </div>

@@ -1,9 +1,35 @@
 @import "tailwindcss";
 
-@theme {
-  --color-sdw-yellow: #ffc400;
-  --color-sdw-blue: #0a4fd6;
-  --color-ink: #14213d;
+/* Graphlas 2.0 design tokens */
+:root {
+  --navy: #17104a; --orange: #ff8b4a; --red: #f0343c; --magenta: #b3308f; --purple: #7b2fbe; --ink: #0f0e1a;
+  --page: #fbf9fc; --surface: #ffffff; --main: #1b1633; --muted: #6b6585; --line: #e6e1ee; --soft: #f4f1f8;
+  --accent: #7b2fbe;
+  --ok: #1e9e5a; --warn: #e0a800; --bad: #d63031;
+  --ok-text: #137a45; --ok-bg: #e7f6ee; --warn-text: #7a5c00; --warn-bg: #fff6d6; --bad-text: #b02325; --bad-bg: #fdecec;
+  --ok-solid: #16794a; --bad-solid: #c42b2c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0f0e1a; --surface: #1a1830; --main: #f1eef8; --muted: #a9a3c2; --line: #2c2850; --soft: #221f3d;
+    --accent: #c79bff;
+    --ok-text: #5fd39a; --ok-bg: #12301f; --warn-text: #f2c94c; --warn-bg: #3a3010; --bad-text: #ff8a8b; --bad-bg: #3b1618;
+  }
 }
 
-body { margin: 0; background: #f6f7fb; color: #14213d; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+@theme inline {
+  --color-navy: var(--navy); --color-orange: var(--orange); --color-red: var(--red);
+  --color-magenta: var(--magenta); --color-purple: var(--purple);
+  --color-page: var(--page); --color-surface: var(--surface); --color-main: var(--main); --color-muted: var(--muted);
+  --color-line: var(--line); --color-soft: var(--soft); --color-accent: var(--accent);
+  --color-ok: var(--ok); --color-warn: var(--warn); --color-bad: var(--bad);
+  --color-oktext: var(--ok-text); --color-okbg: var(--ok-bg); --color-warntext: var(--warn-text);
+  --color-warnbg: var(--warn-bg); --color-badtext: var(--bad-text); --color-badbg: var(--bad-bg);
+  --color-oksolid: var(--ok-solid); --color-badsolid: var(--bad-solid);
+  --font-sans: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html { font-family: var(--font-sans); }
+body { margin: 0; background: var(--page); color: var(--main); font-size: 15px; line-height: 1.5; }
+:focus-visible { outline: 3px solid #ff8b4a; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

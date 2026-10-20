@@ -1,4 +1,4 @@
-# Tectonic_finale
+# Graphlas 2.0 (repo: Tectonic_finale)
 Hackathon finale. React (Vite + Tailwind) frontend, FastAPI backend. See REQUIREMENTS.md for scope and status.
 
 ## Run
