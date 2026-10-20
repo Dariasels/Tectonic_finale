@@ -59,6 +59,7 @@ All documents are in English (questions can use other languages through synonyms
 
 ## Demo checklist (video, no own device at the jury)
 1. Record the video on the day from the local app (`./dev.sh`), 60 seconds, sound optional. Start with `?nosplash&...` links to skip screens.
-2. Click path: Search "payroll cut-off for Nike in Belgium" (as Sales, Spain) -> banner and reasons -> who knows -> "This helped" -> Live capture: a meeting "Nike payroll cut-off review" -> a file saved in SharePoint -> approval (switch to the approver) -> Model & scale: the validation chart.
-3. Put the video in the ppt, save a pdf copy, copy both to a USB stick, test on another computer.
-4. Run `.venv/bin/python -m pytest tests -q` before the last commit (76 tests).
+2. Live capture and Model & scale are only visible to the system admin, the CEO, country leads and department heads: switch to "System admin" or "CEO" in the menu for those two steps.
+3. Click path: Search "payroll cut-off for Nike in Belgium" (as Sales, Spain) -> banner and reasons -> who knows -> "This helped" -> Live capture: a meeting "Nike payroll cut-off review" -> a file saved in SharePoint -> approval (switch to the approver) -> Model & scale: the validation chart.
+4. Put the video in the ppt, save a pdf copy, copy both to a USB stick, test on another computer.
+5. Run `.venv/bin/python -m pytest tests -q` before the last commit.

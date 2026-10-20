@@ -37,7 +37,7 @@ function Result({ res, onSwitch }) {
       {res.attendees && <p className="text-sm text-muted">{res.attendees.counted} of {res.attendees.invited} attendees counted ({res.attendees.not_opted_in} did not opt in). {res.expertise_updates} expertise updates, so "who knows" changed immediately.</p>}
       {res.document && res.status !== 'duplicate' && (
         <div className="flex items-center justify-between rounded-lg bg-soft p-3 text-sm">
-          <span className="min-w-0">{res.document.title}<br /><span className="break-all font-mono text-xs text-muted">{res.document.link}</span></span>
+          <span className="min-w-0">{res.document.title}<br /><span className="text-xs text-muted">Find it in: {res.document.location}</span></span>
           {res.document.doc_type !== 'meeting' && <TrustBadge badge={res.document.badge} score={res.document.trust} />}
         </div>
       )}
@@ -64,8 +64,8 @@ export default function Capture() {
   const [res, setRes] = useState(null)
   const [error, setError] = useState('')
 
-  const refresh = useCallback(() => api.recentEvents().then(setFeed).catch(() => {}), [])
-  useEffect(() => { api.presets().then(setPresets); refresh() }, [refresh])
+  const refresh = useCallback(() => api.recentEvents(user.person_id).then(setFeed).catch(() => {}), [user.person_id])
+  useEffect(() => { api.presets(user.person_id).then(setPresets).catch(() => {}); refresh() }, [refresh, user.person_id])
 
   const organizer = meeting.as ?? user.person_id
   useEffect(() => {

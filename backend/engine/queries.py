@@ -167,7 +167,8 @@ class QueryMixin:
                "last_modified": str(d.last_modified.date()), "version": int(d.version),
                "author": self.person_card(d.author_id), "owner": self.person_card(d.owner_id),
                "approved_by": self.person_card(self.approver.get(d.doc_id)),
-               "team": self.teams.name.get(d.team_id, ""), "acl": d.acl, "link": d.link,
+               "team": self.teams.name.get(d.team_id, ""), "acl": d.acl, "location": self.where(d),
+               "holder": self.person_card(self.holder(d)[0]), "holder_note": self.holder(d)[1],
                "reasons": [{"sign": s, "text": x} for s, x in self.reasons(d) + notes]}
         if detail:
             out["contributions"] = self.contributions(d.doc_id)
@@ -453,5 +454,6 @@ class QueryMixin:
         pick("Back-end developer, Poland", (p.country == "PL") & (p.department == "Engineering") & (p.level == "Medior"))
         pick("Payroll specialist, Netherlands", (p.country == "NL") & (p.department == "Payroll Operations") & (p.level == "Junior"))
         pick("System admin", (p.role == "System Admin"))
+        pick("CEO", (p.role == "Chief Executive Officer"))
         pick("Country Lead, Belgium", (p.country == "BE") & (p.role == "Country Lead"))
         return out

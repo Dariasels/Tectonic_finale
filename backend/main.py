@@ -3,7 +3,7 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Optional, Union
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
@@ -27,6 +27,12 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allo
 
 def eng():
     return state["engine"]
+
+
+def require_technical(user_id):
+    """Model, scale and live capture are for the system admin, executives and higher management only."""
+    if not eng().can_retrain(user_id):
+        raise HTTPException(403, "this page is for technically authorised people and executives")
 
 
 def call(fn, *a, **kw):
@@ -221,10 +227,18 @@ def risks(country: Optional[str] = Query(None, max_length=3)):
     return eng().risks(country)
 
 
+@app.get("/api/access")
+def access(user_id: str = UID):
+    ok = eng().can_retrain(user_id)
+    return {"can_view_technical": ok, "can_retrain": ok,
+            "who": "The system admin, executives, country leads and department heads."}
+
+
 @app.get("/api/model/status")
-def model_status(user_id: Optional[str] = Query(None, pattern=r"^P\d{5}$")):
-    return {**eng().retrain_status(), "can_retrain": bool(user_id and eng().can_retrain(user_id)),
-            "who_can_retrain": "Higher management (country leads, department heads) and the system admin."}
+def model_status(user_id: str = UID):
+    require_technical(user_id)
+    return {**eng().retrain_status(), "can_retrain": True,
+            "who_can_retrain": "Executives, higher management (country leads, department heads) and the system admin."}
 
 
 @app.post("/api/model/retrain")
@@ -244,6 +258,12 @@ def validation():
     return eng().validation()
 
 
+@app.get("/api/people/{person_id}/contact")
+def person_contact(person_id: str = Path(..., pattern=r"^P\d{5}$"), user_id: str = UID):
+    """Contact details of a colleague: company email (given at sign-up), role, team, manager."""
+    return call(eng().contact, person_id)
+
+
 @app.get("/api/people/search")
 def people_search(q: str = Query("", max_length=60)):
     return eng().search_people(q)
@@ -260,7 +280,8 @@ def signup(b: Signup):
 
 
 @app.get("/api/scale")
-def scale():
+def scale(user_id: str = UID):
+    require_technical(user_id)
     e = eng()
     ms = e.ingest_ms
     return {"people": int(len(e.persons)), "teams": int(len(e.teams)), "countries": int(len(e.countries)),
@@ -310,7 +331,8 @@ def meeting_event(b: MeetingEvent):
 
 
 @app.get("/api/events/recent")
-def events_recent():
+def events_recent(user_id: str = UID):
+    require_technical(user_id)
     return eng().recent_events()
 
 
@@ -347,7 +369,8 @@ def demo_questions():
 
 
 @app.get("/api/demo/presets")
-def demo_presets():
+def demo_presets(user_id: str = UID):
+    require_technical(user_id)
     """Ready-made events for the demo. In production the tools send these themselves."""
     h = eng().heroes
     docs = [
@@ -381,7 +404,8 @@ def demo_presets():
 
 
 @app.post("/api/demo/reset")
-def demo_reset():
+def demo_reset(b: Actor):
+    require_technical(b.user_id)
     def run():
         state["engine"] = TrustEngine()
     threading.Thread(target=run, daemon=True).start()

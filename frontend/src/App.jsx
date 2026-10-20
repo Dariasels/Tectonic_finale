@@ -15,20 +15,32 @@ import Approvals from './pages/Approvals'
 import Org from './pages/Org'
 import Model from './pages/Model'
 
+function Closed() {
+  return (
+    <div className="rounded-xl border border-line bg-surface p-4 text-sm">
+      <h2 className="text-[26px] font-extrabold">Not available for your role</h2>
+      <p className="mt-1 text-muted">This page is for technically authorised people and executives: the system admin, the CEO, country leads and department heads. Switch to one of them in the menu at the top.</p>
+    </div>
+  )
+}
+
 function Shell({ signOut }) {
   const { users, user, setUser, error } = useUser()
   const [pending, setPending] = useState(0)
+  const [technical, setTechnical] = useState(false)       // system admin, executives and higher management only
   const [bg, setBgState] = useState(getBg())
   const pickBg = (v) => { setBg(v); setBgState(v) }
 
   useEffect(() => {
     if (!user) return
     api.approvals(user.person_id).then((a) => setPending(a.length)).catch(() => setPending(0))
+    api.access(user.person_id).then((a) => setTechnical(a.can_view_technical)).catch(() => setTechnical(false))
   }, [user])
 
   const nav = [
-    ['/', 'Search', SearchIcon], ['/approvals', 'Approvals', ShieldCheck], ['/capture', 'Live capture', Radio],
-    ['/tools', 'Connected tools', Plug], ['/org', 'Organisation', Building2], ['/model', 'Model & scale', Gauge],
+    ['/', 'Search', SearchIcon], ['/approvals', 'Approvals', ShieldCheck], ['/tools', 'Connected tools', Plug],
+    ['/org', 'Organisation', Building2],
+    ...(technical ? [['/capture', 'Live capture', Radio], ['/model', 'Model & scale', Gauge]] : []),
   ]
   const options = user && !users.some((u) => u.person_id === user.person_id) ? [user, ...users] : users
 
@@ -68,10 +80,10 @@ function Shell({ signOut }) {
             <Routes>
               <Route path="/" element={<Search />} />
               <Route path="/approvals" element={<Approvals />} />
-              <Route path="/capture" element={<Capture />} />
+              <Route path="/capture" element={technical ? <Capture /> : <Closed />} />
               <Route path="/tools" element={<Tools />} />
               <Route path="/org" element={<Org />} />
-              <Route path="/model" element={<Model />} />
+              <Route path="/model" element={technical ? <Model /> : <Closed />} />
             </Routes>
           ) : !error && <p className="text-sm text-muted">Starting the backend (about 10 seconds)...</p>}
         </main>

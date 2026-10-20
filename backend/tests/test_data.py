@@ -32,6 +32,8 @@ def test_hierarchy_reaches_country_lead(eng):
     assert sorted(leads.country) == sorted(eng.countries.index)          # exactly one lead per country
     for pid in eng.persons.sample(600, random_state=1).person_id:
         c = chain(eng, pid)
+        if eng.persons.level[pid] == "Exec":
+            continue                                                       # the CEO is above the country leads
         if eng.persons.role[pid] == "Country Lead":
             assert c == []
         else:

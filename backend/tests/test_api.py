@@ -69,7 +69,7 @@ def test_wrong_approver_gets_403(client, mut, ids):
 def test_retraining_needs_management_or_admin(client, mut, ids):
     assert client.post("/api/model/retrain", json={"user_id": ids["hr"]}).status_code == 403
     assert client.post("/api/model/settings", json={"user_id": ids["dev"], "auto": False}).status_code == 403
-    assert client.get("/api/model/status", params={"user_id": ids["hr"]}).json()["can_retrain"] is False
+    assert client.get("/api/model/status", params={"user_id": ids["hr"]}).status_code == 403
     assert client.get("/api/model/status", params={"user_id": mut.heroes["admin"]}).json()["can_retrain"] is True
     assert client.post("/api/model/settings", json={"user_id": ids["lead"], "min_new_docs": 0}).status_code == 422
 
@@ -110,3 +110,19 @@ def test_profile_rules_over_http(client, ids):
 def test_questions_endpoint_has_no_hostile_samples(client):
     qs = client.get("/api/demo/questions").json()
     assert len(qs) >= 70 and all("DROP TABLE" not in q["text"] and "<script>" not in q["text"] for q in qs)
+
+
+def test_technical_pages_are_closed_to_everyone_else(client, mut, ids):
+    for who in ("hr", "dev", "pay", "es"):
+        u = {"user_id": ids[who]}
+        assert client.get("/api/scale", params=u).status_code == 403, who
+        assert client.get("/api/model/status", params=u).status_code == 403, who
+        assert client.get("/api/events/recent", params=u).status_code == 403, who
+        assert client.get("/api/demo/presets", params=u).status_code == 403, who
+        assert client.post("/api/demo/reset", json=u).status_code == 403, who
+        assert client.get("/api/access", params=u).json()["can_view_technical"] is False
+    for who in (mut.heroes["admin"], mut.heroes["ceo"], ids["lead"]):
+        u = {"user_id": who}
+        assert client.get("/api/scale", params=u).status_code == 200
+        assert client.get("/api/access", params=u).json()["can_view_technical"] is True
+    assert client.get("/api/validation").status_code == 200          # the explanation of the score stays public

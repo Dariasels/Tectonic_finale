@@ -138,7 +138,10 @@ def inject_heroes(t, seed=11):
     admin = pd.DataFrame([{"person_id": nid, "name": "Sam Admin", "department": "Engineering", "country": "BE", "role": "System Admin",
                            "level": "Admin", "team_id": be_eng, "reports_to": be_lead, "team_lead": False, "active": True,
                            "previous_department": "", "opt_in_signals": False}])
-    t["persons"] = pd.concat([t["persons"], admin], ignore_index=True)
-    t["_heroes"] = {"admin": nid, "hr_senior": senior, "hr_medior": medior, "hr_junior": junior, "approver": appr,
+    ceo = pd.DataFrame([{"person_id": f"P{int(nid[1:]) + 1:05d}", "name": "Marie Dumont", "department": "Management", "country": "BE",
+                         "role": "Chief Executive Officer", "level": "Exec", "team_id": f"T_BE_MGT", "reports_to": "", "team_lead": False,
+                         "active": True, "previous_department": "", "opt_in_signals": False}])
+    t["persons"] = pd.concat([t["persons"], admin, ceo], ignore_index=True)
+    t["_heroes"] = {"admin": nid, "ceo": f"P{int(nid[1:]) + 1:05d}", "hr_senior": senior, "hr_medior": medior, "hr_junior": junior, "approver": appr,
                     "es_sales": es.index[0], "be_cs": be_cs, "pension_expert": expert, "nl_cs_left": nl_cs}
     return t

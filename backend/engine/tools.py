@@ -45,6 +45,24 @@ def make_link(source, team, doc_id, author=""):
             "Legacy drive": f"file://legacy-drive/{slug}/{doc_id}"}[source]
 
 
+FOLDER_OF_TYPE = {"policy": "Policies", "manual": "Manuals", "technical": "Technical docs", "customer": "Customers",
+                  "meeting notes": "Meeting notes", "meeting": "Meeting notes", "draft": "Drafts", "personal notes": "Personal notes",
+                  "README": "Docs", "working document": "Working documents"}
+GENERIC_FOLDERS = {"sites", "site", "personal", "general", "files", "shared documents", "shared", "documents", "teams"}
+
+
+def folder_from_path(path):
+    """Last real folder of a path, as readable words ('/sites/hr-belgium/Policies/x.docx' -> 'Policies')."""
+    parts = [p for p in re.split(r"[\\/]+", path or "") if p]
+    if parts and "." in parts[-1]:
+        parts = parts[:-1]
+    parts = [p for p in parts if p.lower() not in GENERIC_FOLDERS]
+    if not parts:
+        return ""
+    f = re.sub(r"[-_]+", " ", parts[-1]).strip()
+    return f[:1].upper() + f[1:]
+
+
 class ToolsMixin:
     def _init_tools(self):
         self.team_tools = {}
@@ -54,6 +72,49 @@ class ToolsMixin:
         for t in self.teams.index:
             self.team_tools.setdefault(t, {"Teams"})
         self.onboarded = set()
+
+    # --------------------------------------------- who to ask, and where it is kept
+    def where(self, d):
+        """Plain words for where the document lives. Never a link."""
+        team = self.teams.name.get(d.team_id, "its team")
+        folder = (d.get("folder") if hasattr(d, "get") else "") or ""
+        if not folder:
+            folder = FOLDER_OF_TYPE.get(d.doc_type, "Documents")
+            if d.client:
+                folder = f"Customers › {self.clients.name.get(d.client, '')}"
+        first = self.persons.name[d.author_id].split(" ")[0]
+        return {"SharePoint": f"SharePoint › {team} › {folder}",
+                "Teams": f"Teams › {team} › Files › {folder}",
+                "OneDrive": f"{first}'s OneDrive › {folder}",
+                "Notion": f"Notion › {team} › {folder}",
+                "GitHub": f"GitHub › {team} repository › {folder if folder != 'Policies' else 'docs'}",
+                "Legacy drive": f"Old shared drive › {team} › {folder}"}[d.source]
+
+    def holder(self, d):
+        """The person to contact for this document: its owner, else its author, else the closest colleague who is still here."""
+        for pid in (d.owner_id, d.author_id):
+            if pid and self.persons.active[pid]:
+                return pid, None
+        near = self.approver.get(d.doc_id)
+        if not (near and self.persons.active[near]):
+            near = self.above(d.author_id)
+        if near:
+            return near, f"{self.persons.name[d.owner_id or d.author_id]} left the company. {self.persons.name[near]} is the closest colleague."
+        return None, None
+
+    def contact(self, person_id):
+        if person_id not in self.persons.index:
+            raise KeyError("unknown person")
+        p = self.persons.loc[person_id]
+        boss = self.reports_to.get(person_id, "")
+        out = {**self.person_card(person_id), "manager": self.person_card(boss) if boss else None}
+        if p.active:
+            out["email"] = p.get("email")
+            out["note"] = "Company email given when this colleague signed up."
+        else:
+            out["email"] = None
+            out["note"] = "This colleague has left the company."
+        return out
 
     # ----------------------------------------------------- sign-in and sign-up
     LEVELS_SIGNUP = ["Junior", "Medior", "Senior", "Team Lead"]
@@ -110,7 +171,8 @@ class ToolsMixin:
             head = self.persons[(self.persons.country == country) & (self.persons.role == f"Head of {department}")]
             boss = self.teams.lead_id.get(team_id, "") if not created else ""
             reports = (boss if level != "Team Lead" and boss else (head.index[0] if len(head) else self.countries_lead(country))) or ""
-            row = {"person_id": pid, "name": name, "department": department, "country": country,
+            email = self._make_emails(pd.DataFrame({"name": list(self.persons.name) + [name]}))[-1]
+            row = {"person_id": pid, "name": name, "email": email, "department": department, "country": country,
                    "role": f"{department} Team Lead" if level == "Team Lead" else f"{level} {department} specialist",
                    "level": level, "team_id": team_id, "reports_to": reports, "team_lead": level == "Team Lead", "active": True,
                    "previous_department": "", "opt_in_signals": False}
@@ -260,6 +322,7 @@ class ToolsMixin:
             self._log("document", user_id, title, source, "ignored: tool not connected")
             return {"status": "ignored", "reason": f"{source} is not connected for {self.teams.name[team]}; nothing was read.",
                     "warnings": self.tool_warnings(team, source), "timings_ms": round((time.time() - t0) * 1000, 1)}
+        payload["folder"] = folder_from_path(payload.get("path"))
         parsed = self.parse_query(f"{title} {payload.get('path') or ''}")      # the title and folder tell what it is about
         derived = {}
         for k, v in (("topic_id", parsed["topic"]), ("country", parsed["country"]), ("client", parsed["client"])):
@@ -327,7 +390,7 @@ class ToolsMixin:
                "extracted": {"topic": res["document"]["topic_id"], "topic_name": res["document"]["topic_name"],
                              "country": parsed["country"], "client": client, "client_name": self.clients.name.get(client) if client else None},
                "attendees": {"invited": len(people), "counted": len(counted), "not_opted_in": len(people) - len(counted)},
-               "expertise_updates": added, "metadata": self.doc_metadata(did), "link": res["document"]["link"],
+               "expertise_updates": added, "metadata": self.doc_metadata(did), "link": self.docs.link[did],
                "timings_ms": round((time.time() - t0) * 1000, 1)}
         self._log("meeting", user_id, title, "Teams", f"captured; {added} expertise updates")
         return out

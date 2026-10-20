@@ -86,6 +86,8 @@ _To be filled after the interview and scope decision._
 | 2026-10-20 | Retraining limited to higher management (country lead, department head) and a system admin | Team pitch review |
 | 2026-10-20 | Votes can be changed or undone | Team pitch review |
 | 2026-10-20 | Generic sign-in (search any colleague) and creating new logins; a new team's lead picks its tools and gets connect links (simulated) | Team pitch review |
+| 2026-10-20 | The answer to a question is a person (with the trust score), the file title and where it is kept in plain words; no links; clicking the person shows contact details with the company email. The explanation behind the score is kept under "Why this score?" | Team decision |
+| 2026-10-20 | Model & scale and Live capture only for system admin, CEO, country leads, department heads (enforced on the server) | Team decision |
 | 2026-10-20 | `context/` is git-ignored | 55 MB partner PDF should not go in a public repo |
 
 ## 10. Status

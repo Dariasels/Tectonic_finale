@@ -17,12 +17,27 @@ class TrustEngine(ToolsMixin, IngestMixin, QueryMixin, CoreEngine):
         tn = tables["teams"].set_index("team_id").name
         pn = tables["persons"].set_index("person_id").name
         d = tables["documents"]
+        d["folder"] = ""                                       # readable folder, filled for documents that arrive through events
         d["link"] = [make_link(s, tn.get(t, ""), i, pn.get(a, "")) for s, t, i, a in zip(d.source, d.team_id, d.doc_id, d.author_id)]
+        tables["persons"]["email"] = self._make_emails(tables["persons"])
         self._init_runtime()
         super().__init__({k: v for k, v in tables.items() if k != "_heroes"})
         self.last_train_wall = None
         self._init_tools()
         self._seed_resolutions()
+
+    @staticmethod
+    def _make_emails(persons):
+        """Company address for everyone, like firstname.lastname@sdworx.example (numbered if two people share a name)."""
+        import re
+        import unicodedata
+        seen, out = {}, []
+        for name in persons["name"]:
+            base = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
+            base = re.sub(r"[^a-z]+", ".", base).strip(".") or "colleague"
+            seen[base] = seen.get(base, 0) + 1
+            out.append(f"{base}{'' if seen[base] == 1 else seen[base]}@sdworx.example")
+        return out
 
     @staticmethod
     def _generate():

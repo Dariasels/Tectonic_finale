@@ -12,7 +12,7 @@ export default function Model() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const load = () => { api.modelStatus(user.person_id).then(setStatus); api.scale().then(setScale) }
+  const load = () => { api.modelStatus(user.person_id).then(setStatus); api.scale(user.person_id).then(setScale) }
   useEffect(load, [user?.person_id])
 
   const retrain = async () => {
@@ -23,7 +23,7 @@ export default function Model() {
   const toggle = async () => {
     try { await api.setPolicy({ user_id: user.person_id, auto: !status.auto }); load() } catch (e) { setError(errText(e)) }
   }
-  const reset = async () => { await api.reset(); setMsg('Rebuilding 84k graph edges and retraining XGBoost... ready in about 15 seconds.') }
+  const reset = async () => { await api.reset(user.person_id); setMsg('Rebuilding 84k graph edges and retraining XGBoost... ready in about 15 seconds.') }
 
   if (!status || !scale) return <p className="p-6 text-sm text-muted">Loading...</p>
   return (

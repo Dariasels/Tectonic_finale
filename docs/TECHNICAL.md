@@ -43,6 +43,9 @@ Documents are never uploaded in the website. `POST /api/events/document` (sent b
 | GET | /api/demo/questions | 74 example questions per category with the persona that asks them |
 | GET | /api/demo/presets, POST /api/demo/reset | ready-made events for the demo; reset state (takes ~10 s) |
 
+### The answer is a person
+Each result shows only: the **person to ask** (`holder`: the owner, else the author, else, if they left, the closest colleague who is still here, with `holder_note` saying so), the **trust score**, the **file title** and **where it is kept** (`location`, plain words such as "SharePoint › HR Advisory Belgium 1 › Policies" or "Sofie's OneDrive › Customers › Nike"). Links are never shown. Clicking the person opens the contact card: `GET /api/people/{id}/contact?user_id=` returns role, team, department, country, manager and the **company email** (generated as firstname.lastname@sdworx.example when someone signs up; people who left have none). Everything else (what it says, author, verified by, the reasons and the model signals behind the score, confirm/flag) is under "Why this score?".
+
 ### Search response (abridged)
 ```json
 {"query": "...", "intent": {"mode": "topic|client|text", "topic": "parental_leave", "country": "BE", "client": null, "user_country": "ES"},
@@ -58,6 +61,9 @@ Documents are never uploaded in the website. `POST /api/events/document` (sent b
  "timings_ms": 90}
 ```
 `reasons[].sign`: +1 good, -1 bad, 0 info. `ask_expert` is true when nothing in scope scores 45 or more.
+
+## 4a. Who may see what
+Search, approvals, connected tools, organisation health and the score explanation (`/api/validation`) are for everyone. **Model & scale, Live capture, retraining and reset** are limited, on the server too, to the system admin, executives (CEO) and higher management (country leads, department heads): `GET /api/access?user_id=` says whether the current user may; the others answer 403.
 
 ## 4b. Sign-in and connected tools
 First visit shows a 3-step sign-in: pick a colleague (demo, no password) -> questions and tools (team tools editable by team leads only; survey asks the questions the interview left open: how often documents are made, templates, how the current version is known) -> privacy (opt-in signals) and simulated connect buttons. `?demo` in the URL skips the sign-in. Everything can be changed later under Connected tools. A team without SharePoint or GitHub gets a warning that its knowledge stays invisible; an upload from a tool that is not connected is ignored (event) or warned about (upload form).

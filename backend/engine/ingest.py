@@ -78,6 +78,7 @@ class IngestMixin:
                    "last_modified": REFERENCE_DATE, "version": int(payload.get("version", 1)), "source": source,
                    "language": self.countries.language.get(country, "en"), "key_value": key_value, "verified": False,
                    "acl": payload.get("acl") or ("client:" + client if client else "all"), "text": text,
+                   "folder": str(payload.get("folder") or ""),
                    "link": str(payload.get("link") or make_link(source, self.teams.name.get(a.team_id, ""), did, a["name"])),
                    "edited": False, "pending": False}
             grp = self.groups.get((topic, country, client), [])
@@ -160,7 +161,7 @@ class IngestMixin:
                 "document": {"doc_id": d.doc_id, "title": d.title, "key_value": d.key_value, "source": d.source,
                              "topic_name": self.topics.name.get(d.topic_id, d.topic_id), "country": d.country,
                              "trust": round(float(self.trust[d.doc_id]), 1), "badge": badge(float(self.trust[d.doc_id])),
-                             "extract": d.text, "link": d.link}}
+                             "extract": d.text, "location": self.where(d)}}
 
     def list_approvals(self, user_id, status="pending"):
         return [self.approval_json(a) for a in self.approvals.values()
@@ -351,8 +352,9 @@ class IngestMixin:
                 "n_labels": self.n_labels}
 
     def can_retrain(self, user_id):
-        """Retraining is limited to higher management (country lead, department head) and the system admin."""
-        return user_id in self.persons.index and self.persons.level[user_id] in ("Lead", "Head", "Admin")
+        """The technical pages (model, scale, retraining, live capture) are limited to the system admin, executives
+        and higher management (country lead, department head)."""
+        return user_id in self.persons.index and self.persons.level[user_id] in ("Lead", "Head", "Admin", "Exec")
 
     def retrain(self, reason="manual"):
         with self.lock:

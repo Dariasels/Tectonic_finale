@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, ChevronDown, ChevronUp, Flag, Search as SearchIcon, ShieldCheck, ThumbsUp, UserCheck, Users } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, FileText, Flag, MapPin, Search as SearchIcon, ShieldCheck, ThumbsUp, UserCheck, Users } from 'lucide-react'
 import { api, errText } from '../api'
 import { useUser } from '../user'
+import PersonDialog from '../PersonDialog'
 import ScoreProof from '../ScoreProof'
 import { Button, Card, Chip, ErrorBox, Reasons, SourceChip, TrustBadge } from '../ui'
 
@@ -23,7 +24,7 @@ function PersonLine({ p }) {
   )
 }
 
-function ResultCard({ r, user, intent, onChanged }) {
+function ResultCard({ r, user, intent, onChanged, onPerson }) {
   const [open, setOpen] = useState(false)
   const [msg, setMsg] = useState('')
   const vote = async (kind) => {
@@ -33,26 +34,21 @@ function ResultCard({ r, user, intent, onChanged }) {
       setMsg(updated.my_vote === 'confirm' ? 'You confirmed this. Click again to undo.' : updated.my_vote === 'flag' ? 'You flagged this. Click again to undo.' : 'Your vote was removed.')
     } catch (e) { setMsg(errText(e)) }
   }
+  const h = r.holder
   return (
     <Card className={r.in_scope ? '' : 'opacity-70'}>
+      {/* The answer: who to ask, how much to trust it, what the file is called, where it is kept. */}
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold">{r.title}</h3>
-            {r.verified && <span className="inline-flex items-center gap-1 text-xs font-medium text-oktext"><ShieldCheck className="h-4 w-4" />Verified</span>}
-            {r.pending_approval && <Chip className="bg-warnbg text-warntext">awaiting approval</Chip>}
-          </div>
-          {r.key_value && <p className="mt-1 text-lg text-accent">{r.key_value}</p>}
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <SourceChip source={r.source} />
-            <Chip>{r.country}</Chip>
-            {r.client_name && <Chip>{r.client_name}</Chip>}
-            <Chip>updated {r.last_modified}</Chip>
-            {!r.in_scope && <Chip className="bg-badbg text-badtext">other country</Chip>}
-          </div>
-          <p className="mt-2 text-sm text-muted">Author: <PersonLine p={r.author} /></p>
-          {r.link && <p className="break-all font-mono text-xs text-muted">{r.link}</p>}
-          {r.approved_by && <p className="text-sm text-muted">Verified by: <PersonLine p={r.approved_by} /></p>}
+        <div className="min-w-0 space-y-1">
+          {h ? (
+            <p>
+              <button onClick={() => onPerson(h.person_id)} className="text-lg font-extrabold text-accent hover:underline">{h.name}</button>
+              <span className="ml-2 text-sm text-muted">{h.role}, {h.country}</span>
+            </p>
+          ) : <p className="text-lg font-extrabold">No colleague to ask</p>}
+          <p className="flex items-center gap-1.5 text-base"><FileText className="h-4 w-4 shrink-0 text-muted" /><span className="font-medium">{r.title}</span></p>
+          <p className="flex items-center gap-1.5 text-sm text-muted"><MapPin className="h-4 w-4 shrink-0" /><span>Find it in: <span className="text-main">{r.location}</span></span></p>
+          {r.holder_note && <p className="text-xs text-muted">{r.holder_note}</p>}
         </div>
         <TrustBadge badge={r.badge} score={r.trust} />
       </div>
@@ -61,6 +57,18 @@ function ResultCard({ r, user, intent, onChanged }) {
       </button>
       {open && (
         <div className="mt-2 space-y-3 rounded-lg bg-soft p-3">
+          {r.key_value && <p className="text-sm">What it says: <b className="text-accent">{r.key_value}</b></p>}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <SourceChip source={r.source} />
+            <Chip>{r.country}</Chip>
+            {r.client_name && <Chip>{r.client_name}</Chip>}
+            <Chip>updated {r.last_modified}</Chip>
+            {r.verified && <span className="inline-flex items-center gap-1 text-xs font-medium text-oktext"><ShieldCheck className="h-4 w-4" />Verified</span>}
+            {r.pending_approval && <Chip className="bg-warnbg text-warntext">awaiting approval</Chip>}
+            {!r.in_scope && <Chip className="bg-badbg text-badtext">other country</Chip>}
+          </div>
+          <p className="text-sm text-muted">Author: <PersonLine p={r.author} /></p>
+          {r.approved_by && <p className="text-sm text-muted">Verified by: <PersonLine p={r.approved_by} /></p>}
           <Reasons reasons={r.reasons} />
           {r.contributions && (
             <div>
@@ -81,7 +89,7 @@ function ResultCard({ r, user, intent, onChanged }) {
   )
 }
 
-function Experts({ experts, intent, user }) {
+function Experts({ experts, intent, user, onPerson }) {
   const [done, setDone] = useState({})
   const helped = async (p) => {
     try {
@@ -97,7 +105,7 @@ function Experts({ experts, intent, user }) {
         {experts.map((p) => (
           <li key={p.person_id} className="text-sm">
             <div className="flex items-center justify-between gap-2">
-              <div><span className="font-medium">{p.name}</span> <span className="text-muted">{p.role}, {p.country}</span></div>
+              <div><button onClick={() => onPerson(p.person_id)} className="font-semibold text-accent hover:underline">{p.name}</button> <span className="text-muted">{p.role}, {p.country}</span></div>
               <Button variant="ghost" className="shrink-0 whitespace-nowrap" onClick={() => helped(p)}><UserCheck className="h-4 w-4" />This helped</Button>
             </div>
             <div className="mt-1 flex flex-wrap gap-1">{p.evidence.map((e) => <Chip key={e}>{e}</Chip>)}</div>
@@ -152,6 +160,7 @@ export default function Search() {
   const [meta, setMeta] = useState(null)
   const [showHelp, setShowHelp] = useState(false)
   const [showProof, setShowProof] = useState(false)
+  const [contactId, setContactId] = useState(null)
   const [showLib, setShowLib] = useState(false)
   useEffect(() => { api.questions().then(setLibrary).catch(() => {}); api.meta().then(setMeta).catch(() => {}) }, [])
 
@@ -263,14 +272,15 @@ export default function Search() {
               </div>
             ))}
             {data.results.length === 0 && <Card>No results you have access to.</Card>}
-            {data.results.map((r) => <ResultCard key={r.doc_id} r={r} user={user} intent={data.intent} onChanged={replaceResult} />)}
+            {data.results.map((r) => <ResultCard key={r.doc_id} r={r} user={user} intent={data.intent} onChanged={replaceResult} onPerson={setContactId} />)}
           </div>
           <div className="space-y-3">
-            <Experts experts={data.experts} intent={data.intent} user={user} />
+            <Experts experts={data.experts} intent={data.intent} user={user} onPerson={setContactId} />
             <MiniGraph graph={data.graph} />
           </div>
         </div>
       )}
+      {contactId && <PersonDialog personId={contactId} userId={user.person_id} onClose={() => setContactId(null)} />}
     </div>
   )
 }
