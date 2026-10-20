@@ -399,3 +399,12 @@ def test_no_second_training_inside_the_minimum_gap(mut):
 def test_new_document_is_scored_fast_without_full_rebuild(mut):
     assert mut.stats["last_ingest_ms"] < 1000 and mut.stats["full_rebuild_s"] > 1
     assert mut.stats["last_ingest_ms"] < mut.stats["full_rebuild_s"] * 1000 / 5
+
+
+def test_survey_answers_are_optional_and_can_have_several_values(mut, ids):
+    uid = ids["pay"]
+    p = mut.set_profile(uid, answers={"find": ["ask a colleague", "search in Teams", "ask a colleague", "bogus"], "frequency": "weekly"})
+    assert p["answers"]["find"] == ["ask a colleague", "search in Teams"]          # several, no duplicates, invalid dropped
+    assert p["answers"]["frequency"] == ["weekly"]                                 # a single value still works
+    assert mut.set_profile(uid, answers={"find": []})["answers"]["find"] == []     # clearing is fine
+    assert mut.set_profile(uid)["onboarded"]                                       # saving with no answers at all is fine

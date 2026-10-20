@@ -192,10 +192,11 @@ class ToolsMixin:
                 if not set(personal_tools) <= set(PERSONAL):
                     raise ValueError("unknown personal tool")
                 pr["personal_tools"] = set(personal_tools)
-            if answers is not None:
+            if answers is not None:                      # optional, and several answers per question are allowed
                 for k, v in answers.items():
-                    if k in ANSWER_KEYS and v in ANSWER_KEYS[k]:
-                        pr["answers"][k] = v
+                    if k in ANSWER_KEYS:
+                        vals = [v] if isinstance(v, str) else list(v)
+                        pr["answers"][k] = [x for x in dict.fromkeys(vals) if x in ANSWER_KEYS[k]]
             if team_tools is not None:
                 if not self.can_manage(user_id, u.team_id):
                     raise PermissionError("only a team lead (or higher) can change the tools of a team")

@@ -12,12 +12,15 @@ const QUESTIONS = {
   versions: 'How do you know which version is the current one?',
 }
 
-function Choice({ options, value, onChange, name }) {
+/* Several answers can be ticked; none is required. */
+function MultiChoice({ options, value = [], onChange, name }) {
+  const list = Array.isArray(value) ? value : value ? [value] : []
+  const toggle = (o) => onChange(list.includes(o) ? list.filter((x) => x !== o) : [...list, o])
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2" role="group" aria-label={name}>
       {options.map((o) => (
-        <label key={o} className={`cursor-pointer rounded-full border px-3 py-1 text-sm ${value === o ? 'border-magenta bg-soft font-medium' : 'border-line'}`}>
-          <input type="radio" name={name} className="sr-only" checked={value === o} onChange={() => onChange(o)} />{o}
+        <label key={o} className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 text-sm ${list.includes(o) ? 'border-magenta bg-soft font-medium' : 'border-line'}`}>
+          <input type="checkbox" className="h-4 w-4" checked={list.includes(o)} onChange={() => toggle(o)} />{o}
         </label>
       ))}
     </div>
@@ -185,11 +188,11 @@ export default function Login({ onDone, initialMode }) {
         {step === 2 && profile && (
           <>
             <Card className="space-y-4">
-              <h3 className="font-semibold">A few questions</h3>
+              <div><h3 className="font-semibold">A few questions</h3><p className="text-sm text-muted">Optional. Tick everything that applies, or skip them.</p></div>
               {Object.entries(QUESTIONS).map(([k, q]) => (
                 <div key={k} className="space-y-1.5">
                   <p className="text-sm font-medium">{q}</p>
-                  <Choice name={k} options={profile.questions[k]} value={answers[k]} onChange={(v) => setAnswers({ ...answers, [k]: v })} />
+                  <MultiChoice name={q} options={profile.questions[k]} value={answers[k]} onChange={(v) => setAnswers({ ...answers, [k]: v })} />
                 </div>
               ))}
             </Card>

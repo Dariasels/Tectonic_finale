@@ -1,7 +1,7 @@
 """Tectonic API: a trust layer on top of Teams, SharePoint, OneDrive, Notion, GitHub and legacy drives."""
 import threading
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -71,7 +71,7 @@ class ProfileIn(BaseModel):
     personal_tools: Optional[list[str]] = Field(default=None, max_length=6)
     team_tools: Optional[list[str]] = Field(default=None, max_length=6)
     signals: Optional[dict[str, bool]] = None
-    answers: Optional[dict[str, str]] = None
+    answers: Optional[dict[str, Union[str, list[str]]]] = None      # optional; several answers per question are allowed
     connections: Optional[list[str]] = Field(default=None, max_length=5)
 
 

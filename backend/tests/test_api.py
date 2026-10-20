@@ -101,7 +101,9 @@ def test_validation_and_department_endpoints(client):
 def test_profile_rules_over_http(client, ids):
     assert client.post("/api/profile", json={"user_id": ids["hr"], "team_tools": ["Teams"]}).status_code == 403
     assert client.post("/api/profile", json={"user_id": ids["hr"], "connections": ["Evil"]}).status_code == 400
-    assert client.post("/api/profile", json={"user_id": ids["hr"], "answers": {"find": "bogus"}}).json()["answers"].get("find") != "bogus"
+    assert client.post("/api/profile", json={"user_id": ids["hr"], "answers": {"find": "bogus"}}).json()["answers"].get("find") == []
+    two = client.post("/api/profile", json={"user_id": ids["hr"], "answers": {"find": ["ask a colleague", "search SharePoint"]}}).json()
+    assert two["answers"]["find"] == ["ask a colleague", "search SharePoint"]
     assert [p["provider"] for p in client.get("/api/auth/providers").json()] == ["GitHub", "Teams", "Notion"]
 
 
