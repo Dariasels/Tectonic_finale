@@ -91,6 +91,8 @@ _To be filled after the interview and scope decision._
 | 2026-10-20 | Automatic clean-up: replaced documents (once the successor is verified) and graph orphans leave Graphlas by themselves; very low scores go to the team lead (not the whole team) for review; links to a removed document are redirected to its successor; everything logged and restorable | Team decision |
 | 2026-10-20 | First improvement after the hackathon: an extraction agent that reads a file once and keeps one fact (docs/IMPROVEMENTS.md); not built now | Team decision |
 | 2026-10-20 | Interface available in the 21 languages of the 26 countries (main labels; machine translated, to be reviewed); documents stay English | Team decision |
+| 2026-10-20 | Pitch: in the demo the data is annotated by us; in production a locally run, constrained agent does it. Say that questions and meeting titles use synonym matching | Team decision |
+| 2026-10-20 | The removal system is a trash: hide in Graphlas, log, restore; explained in docs/REMOVAL.md. Open: how long entries stay before purge (proposal 90 days) | Team decision |
 | 2026-10-20 | `context/` is git-ignored | 55 MB partner PDF should not go in a public repo |
 
 ## 10. Status

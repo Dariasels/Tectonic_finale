@@ -2,6 +2,8 @@
 
 In the demo the connections are simulated: the buttons under *Connected tools* and the *Live capture* page produce the same events that the real tools would send. Everything after the event (link + metadata, extraction, scoring, graph, approvals, clean-up) is already built. What is missing is the part in front of it.
 
+> Connecting an app takes days in a real company because of IT permission and approval. One tool was unclear in the team notes ("Nooit"): to be confirmed.
+
 ## The flow in production
 1. **Connect (once).** A person or team lead presses *Connect* on a tool. The browser goes to the tool's own consent page (OAuth 2.0), the tool shows exactly which read permissions are requested, the user agrees, and the tool sends the browser back to `/api/auth/<tool>/callback` with a one-time code. The backend swaps it for tokens and stores them encrypted (refresh token in a vault, never in the repo or the browser).
 2. **First scan (backfill, once).** The connector walks everything the authorisation can see: for each file the metadata (name, folder, owner, dates, version, who can access it). Each file goes to the extraction agent (read once, keep one fact, forget the content) and then into the same `ingest_event` the demo uses.

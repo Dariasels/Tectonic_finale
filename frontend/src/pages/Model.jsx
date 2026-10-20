@@ -77,7 +77,7 @@ export default function Model() {
         )}
         {log.length > 0 && (
           <div>
-            <p className="mb-1 text-xs font-semibold uppercase text-muted">Recently removed</p>
+            <p className="mb-1 text-xs font-semibold uppercase text-muted">Trash: recently removed</p>
             <ul className="space-y-1 text-sm">
               {log.slice(0, 6).map((e) => (
                 <li key={e.doc_id + e.when} className="flex flex-wrap items-center justify-between gap-2">

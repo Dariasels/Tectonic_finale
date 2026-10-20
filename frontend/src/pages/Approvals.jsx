@@ -102,8 +102,8 @@ export default function Approvals() {
 
       {log.length > 0 && (
         <Card className="space-y-2">
-          <h3 className="font-semibold">Removed from Graphlas automatically</h3>
-          <p className="text-xs text-muted">Replaced documents and documents nobody uses or looks after any more. They can be restored.</p>
+          <h3 className="font-semibold">Trash: removed from Graphlas automatically</h3>
+          <p className="text-xs text-muted">Replaced documents and documents nobody uses or looks after any more. The files themselves are untouched, and everything here can be restored.</p>
           <ul className="space-y-2 text-sm">
             {log.slice(0, 8).map((e) => (
               <li key={e.doc_id + e.when} className="flex flex-wrap items-center justify-between gap-2">

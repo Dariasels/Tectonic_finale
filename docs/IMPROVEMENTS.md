@@ -47,6 +47,9 @@ class Extractor(Protocol):
 `ingest_event` (files) and `ingest_meeting` (invitations, the description is already accepted) call `get_extractor().extract(...)` and use the result for `topic_id`, `country`, `client`, `key_value` and `extract`. The explicit fields in the event still win.
 Live capture gets a "paste text" box so the demo can show the reader at work: paste a paragraph, see the extracted fields, see that nothing is stored.
 
+### Runs locally and constrained (answer to "customers may object")
+The agent is a small service that runs **inside the customer's own environment** (their tenant or their server), not in our cloud. It reads with a read-only, narrowest-scope permission, can use a **local model** (or the rule-based extractor only), and only the structured record and the link leave the building; the content never does. It can be paused per tool, and every run is logged (ids, counts, timings, never content).
+
 ### Privacy and security
 - Content exists only in memory during the call; the stored `extract` stays a single short sentence (already limited to 300 characters).
 - Respect access rights: the extractor reads with the saving user's or a service account's scope, never wider.
