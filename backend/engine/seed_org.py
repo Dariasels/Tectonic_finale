@@ -117,6 +117,7 @@ CLIENT_TOPICS = {  # topic -> (name, format, lo, hi)
     "client_contacts": ("Key contacts", "{n} named contacts", 1, 6),
     "client_escalation": ("Escalation agreement", "escalate after {n} hours", 2, 48),
 }
+CLIENT_NAME = {}
 FIRST = {"nl": ["Sofie", "Thomas", "Laura", "Jens", "An", "Gert", "Lotte", "Wim", "Eline", "Bram", "Nele", "Koen"],
          "de": ["Anna", "Lukas", "Julia", "Felix", "Hannah", "Jonas", "Lena", "Paul", "Mia", "Max", "Clara", "Tim"],
          "ro": ["Marie", "Pierre", "Chiara", "Marco", "Lucia", "Carlos", "Elena", "Javier", "Sara", "Diego", "Ines", "Luca"],
@@ -261,7 +262,7 @@ def gen(n_people=10000, n_notes=5000, seed=7):
             d = new_doc(topic, country, client, dept, fmt.format(n=n), bool(current), author, age, src, doc_type,
                         f"{label}. Rule: {fmt.format(n=n)}.")
             ctry = "Europe" if country == "ALL" else COUNTRIES.get(country, ("", "", 0))[0]
-            d["title"] = f"{label} ({ctry or country}) v{d['version']}" if not client else f"{label}: {client} ({ctry}) v{d['version']}"
+            d["title"] = f"{label} ({ctry or country}) v{d['version']}" if not client else f"{label}: {CLIENT_NAME.get(client, client)} ({ctry}) v{d['version']}"
             group.append(d)
         return group
 
@@ -278,6 +279,7 @@ def gen(n_people=10000, n_notes=5000, seed=7):
                 groups.append(g)
     # client-specific agreements (served in 3 countries each)
     cids = {c: f"C{i + 1:02d}" for i, c in enumerate(CLIENTS)}
+    CLIENT_NAME.update({v: k for k, v in cids.items()})
     clist = list(COUNTRIES)
     for c, cid in cids.items():
         ctrs = ["BE", "NL", "ES"] if cid == "C01" else list(rng.choice(clist[:12], 3, replace=False))

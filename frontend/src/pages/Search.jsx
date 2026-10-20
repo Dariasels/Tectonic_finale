@@ -1,0 +1,216 @@
+import { useEffect, useRef, useState } from 'react'
+import { AlertTriangle, ChevronDown, ChevronUp, Flag, Search as SearchIcon, ShieldCheck, ThumbsUp, UserCheck, Users } from 'lucide-react'
+import { api, errText } from '../api'
+import { useUser } from '../user'
+import { Button, Card, Chip, ErrorBox, Reasons, TrustBadge } from '../ui'
+
+const EXAMPLES = [
+  'How much parental leave do I get in Belgium?',
+  'What do we know about Nike?',
+  'payroll cut-off for Nike in Belgium',
+  'What is the retirement age in Belgium?',
+  'salary bands in Poland',
+]
+
+function PersonLine({ p }) {
+  if (!p) return <span className="text-slate-400">no owner</span>
+  return (
+    <span className={p.active ? '' : 'text-slate-400 line-through'}>
+      {p.name} <span className="text-xs text-slate-500">({p.department}, {p.country})</span>
+      {!p.active && <span className="ml-1 text-xs no-underline text-rose-600"> left the company</span>}
+    </span>
+  )
+}
+
+function ResultCard({ r, user, intent, onChanged }) {
+  const [open, setOpen] = useState(false)
+  const [msg, setMsg] = useState('')
+  const vote = async (kind) => {
+    try {
+      const updated = await api.vote(r.doc_id, user.person_id, kind)
+      onChanged(updated)
+      setMsg(kind === 'confirm' ? 'Thanks, confirmed.' : 'Thanks, flagged.')
+    } catch (e) { setMsg(errText(e)) }
+  }
+  return (
+    <Card className={r.in_scope ? '' : 'opacity-70'}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold">{r.title}</h3>
+            {r.verified && <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700"><ShieldCheck className="h-4 w-4" />Verified</span>}
+            {r.pending_approval && <Chip className="bg-amber-100 text-amber-800">awaiting approval</Chip>}
+          </div>
+          {r.key_value && <p className="mt-1 text-lg text-sdw-blue">{r.key_value}</p>}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Chip>{r.source}</Chip>
+            <Chip>{r.country}</Chip>
+            {r.client_name && <Chip>{r.client_name}</Chip>}
+            <Chip>updated {r.last_modified}</Chip>
+            {!r.in_scope && <Chip className="bg-rose-50 text-rose-700">other country</Chip>}
+          </div>
+          <p className="mt-2 text-sm text-slate-600">Author: <PersonLine p={r.author} /></p>
+          {r.approved_by && <p className="text-sm text-slate-600">Verified by: <PersonLine p={r.approved_by} /></p>}
+        </div>
+        <TrustBadge badge={r.badge} score={r.trust} />
+      </div>
+      <button className="mt-3 flex items-center gap-1 text-sm font-medium text-sdw-blue" onClick={() => setOpen(!open)}>
+        Why this score? {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-3 rounded-lg bg-slate-50 p-3">
+          <Reasons reasons={r.reasons} />
+          {r.contributions && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase text-slate-500">Biggest model signals</p>
+              <div className="flex flex-wrap gap-1.5">
+                {r.contributions.map((c) => <Chip key={c.label} className={c.effect > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}>{c.label}</Chip>)}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => vote('confirm')}><ThumbsUp className="h-4 w-4" />Confirm</Button>
+            <Button variant="ghost" onClick={() => vote('flag')}><Flag className="h-4 w-4" />Flag as wrong</Button>
+            <span className="text-sm text-slate-500">{msg}</span>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function Experts({ experts, intent, user }) {
+  const [done, setDone] = useState({})
+  const helped = async (p) => {
+    try {
+      await api.resolve({ user_id: user.person_id, topic: intent.topic, country: intent.country, client: intent.client, person_id: p.person_id })
+      setDone((d) => ({ ...d, [p.person_id]: 'Saved: the next colleague will see this contact first.' }))
+    } catch (e) { setDone((d) => ({ ...d, [p.person_id]: errText(e) })) }
+  }
+  if (!experts.length) return null
+  return (
+    <Card>
+      <h3 className="mb-2 flex items-center gap-2 font-semibold"><Users className="h-5 w-5 text-sdw-blue" />Who knows this?</h3>
+      <ul className="space-y-3">
+        {experts.map((p) => (
+          <li key={p.person_id} className="text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div><span className="font-medium">{p.name}</span> <span className="text-slate-500">{p.role}, {p.country}</span></div>
+              <Button variant="ghost" className="shrink-0 whitespace-nowrap" onClick={() => helped(p)}><UserCheck className="h-4 w-4" />This helped</Button>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-1">{p.evidence.map((e) => <Chip key={e}>{e}</Chip>)}</div>
+            {p.moved_from && <p className="text-xs text-slate-500">Moved from {p.moved_from}</p>}
+            {done[p.person_id] && <p className="mt-1 text-xs text-emerald-700">{done[p.person_id]}</p>}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  )
+}
+
+function MiniGraph({ graph }) {
+  if (!graph?.nodes?.length) return null
+  const docs = graph.nodes.filter((n) => n.type === 'document').slice(0, 5)
+  const docIds = new Set(docs.map((n) => n.id))
+  const edges = graph.edges.filter((e) => (docIds.has(e.target) && (docIds.has(e.source) || graph.nodes.some((n) => n.id === e.source && n.type === 'person'))))
+  const personIds = new Set(edges.map((e) => e.source).filter((id) => !docIds.has(id)))
+  const people = graph.nodes.filter((n) => n.type === 'person' && personIds.has(n.id))
+  const h = Math.max(people.length, docs.length) * 44 + 20
+  const pos = {}
+  people.forEach((n, i) => { pos[n.id] = [150, 30 + i * 44] })
+  docs.forEach((n, i) => { pos[n.id] = [330, 30 + i * 44] })
+  const color = { green: '#059669', yellow: '#d97706', red: '#e11d48' }
+  return (
+    <Card>
+      <h3 className="mb-2 font-semibold">How these sources connect</h3>
+      <svg viewBox={`0 0 560 ${h}`} className="w-full">
+        {edges.filter((e) => pos[e.source] && pos[e.target]).map((e, i) => {
+          const [x1, y1] = pos[e.source], [x2, y2] = pos[e.target]
+          const dash = e.type === 'LINKS_TO' ? '4 3' : e.type === 'SUPERSEDES' ? '1 3' : ''
+          const stroke = e.type === 'APPROVED' ? '#059669' : e.type === 'SUPERSEDES' ? '#e11d48' : '#94a3b8'
+          return <path key={i} d={`M${x1 + 6},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2 + (x1 === x2 ? 90 : 0)},${y2} ${x2 - 6},${y2}`} fill="none" stroke={stroke} strokeDasharray={dash} strokeWidth="1.5" />
+        })}
+        {people.map((n) => <g key={n.id}><circle cx={pos[n.id][0]} cy={pos[n.id][1]} r="6" fill={n.active ? '#0a4fd6' : '#cbd5e1'} /><text x={pos[n.id][0] - 12} y={pos[n.id][1] + 4} textAnchor="end" fontSize="13" fill="#334155">{n.label}</text></g>)}
+        {docs.map((n) => <g key={n.id}><rect x={pos[n.id][0] - 6} y={pos[n.id][1] - 6} width="12" height="12" rx="3" fill={color[n.badge]} /><text x={pos[n.id][0] + 12} y={pos[n.id][1] + 4} fontSize="13" fill="#334155">{n.label.slice(0, 22)}</text></g>)}
+      </svg>
+      <p className="text-xs text-slate-500">Solid: wrote or verified. Dashed: links to. Dotted red: replaced by.</p>
+    </Card>
+  )
+}
+
+export default function Search() {
+  const { user } = useUser()
+  const [q, setQ] = useState('')
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const inputRef = useRef(null)
+
+  const run = async (text) => {
+    if (!user) return
+    setLoading(true); setError('')
+    try { setData(await api.search({ q: text, user_id: user.person_id })) }
+    catch (e) { setError(errText(e)) }
+    finally { setLoading(false) }
+  }
+  useEffect(() => { setData(null) }, [user?.person_id])
+  useEffect(() => { inputRef.current?.focus() }, [])
+  useEffect(() => {                       // deep link: /?q=parental+leave+in+Belgium runs the search directly
+    const initial = new URLSearchParams(window.location.search).get('q')
+    if (initial && user) { setQ(initial); run(initial) }
+  }, [user?.person_id])
+
+  const replaceResult = (updated) => setData((d) => ({ ...d, results: d.results.map((r) => (r.doc_id === updated.doc_id ? { ...r, ...updated, reasons: updated.reasons, contributions: r.contributions } : r)) }))
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); run(q) }} className="flex gap-2">
+        <div className="relative flex-1">
+          <SearchIcon className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} maxLength={300}
+            placeholder="Ask anything, e.g. parental leave in Belgium, or what do we know about Nike?"
+            className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-base shadow-sm outline-none focus:border-sdw-blue focus:ring-2 focus:ring-blue-200" />
+        </div>
+        <Button type="submit" className="px-5">Search</Button>
+      </form>
+      <div className="flex flex-wrap gap-2">
+        {EXAMPLES.map((ex) => <button key={ex} onClick={() => { setQ(ex); run(ex) }} className="rounded-full bg-white px-3 py-1 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">{ex}</button>)}
+      </div>
+      <ErrorBox>{error}</ErrorBox>
+      {loading && <p className="text-sm text-slate-500">Searching...</p>}
+      {data && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="space-y-3 lg:col-span-2">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+              {data.intent.topic_name && <Chip>Topic: {data.intent.topic_name}</Chip>}
+              {data.intent.country && <Chip>Country: {data.intent.country}</Chip>}
+              {data.intent.client_name && <Chip>Customer: {data.intent.client_name}</Chip>}
+              <span>{data.results.length} results in {data.timings_ms} ms{data.related_notes ? `, ${data.related_notes} loose notes hidden` : ''}</span>
+            </div>
+            {data.banner && (
+              <div className="flex items-start gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 ring-1 ring-rose-200">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><span>{data.banner.message}</span>
+              </div>
+            )}
+            {data.ask_expert && (
+              <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">
+                No document can be trusted for this question. Ask one of the people on the right.
+              </div>
+            )}
+            {data.shortcuts.map((s, i) => (
+              <div key={i} className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
+                <b>Shortcut:</b> {s.type === 'person' ? `${s.person.name} (${s.person.role}, ${s.person.country})` : s.document.title}. {s.message}.
+              </div>
+            ))}
+            {data.results.length === 0 && <Card>No results you have access to.</Card>}
+            {data.results.map((r) => <ResultCard key={r.doc_id} r={r} user={user} intent={data.intent} onChanged={replaceResult} />)}
+          </div>
+          <div className="space-y-3">
+            <Experts experts={data.experts} intent={data.intent} user={user} />
+            <MiniGraph graph={data.graph} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
