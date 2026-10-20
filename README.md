@@ -1,6 +1,9 @@
 # Graphlas 2.0 (repo: Tectonic_finale)
 Hackathon finale. React (Vite + Tailwind) frontend, FastAPI backend. See REQUIREMENTS.md for scope and status.
 
+## What we built
+Read `docs/WHAT_WE_BUILT.md`: 1. plugins into the graph base, 2. graph + machine learning, 3. name + score.
+
 ## Run
 Backend:  `cd backend && .venv/bin/uvicorn main:app --reload --port 8000`
 Frontend: `cd frontend && npm run dev`  (http://localhost:5173, proxies /api -> :8000)
