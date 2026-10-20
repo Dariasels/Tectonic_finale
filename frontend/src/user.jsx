@@ -17,10 +17,14 @@ export function UserProvider({ children }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    const as = new URLSearchParams(window.location.search).get('as')           // ?as=P00123 acts as that colleague (demos and checks)
+    if (as && /^P\d{5}$/.test(as)) {
+      api.contact(as, as).then((c) => { const u = { ...c, extra: true }; setUserState(u); save(u) }).catch(() => {})
+    }
     api.users().then((list) => {
       setUsers(list)
       // ids change when the data is regenerated: drop a stale saved user
-      setUserState((cur) => (cur && list.some((u) => u.person_id === cur.person_id)) || (cur && cur.extra) ? cur : list[0] ?? null)
+      setUserState((cur) => (as && /^P\d{5}$/.test(as)) ? cur : (cur && list.some((u) => u.person_id === cur.person_id)) || (cur && cur.extra) ? cur : list[0] ?? null)
     }).catch(() => setError('Backend not reachable. Start it with ./dev.sh'))
   }, [])
 

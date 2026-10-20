@@ -54,6 +54,9 @@ class CoreEngine:
     def __init__(self, tables=None):
         self.lock = threading.RLock()
         self.stats = {}
+        self.retired = {}                                # doc_id -> why it left Graphlas (kept for the log and for rebuilds)
+        self.retire_log = []
+        self.review_kept = {}                            # doc_id -> date the team lead said it is reliable
         self.person_prefs = {}                           # person_id -> tools, signal consent, survey answers
         self.votes = {}                                  # doc_id -> {"confirm": n, "flag": n}
         self.extra_labels = {}                           # doc_id -> 0/1 from approvals, rejections, confirmations
@@ -94,6 +97,7 @@ class CoreEngine:
             self.docs["edited"] = False
             self.docs["pending"] = False
             self.docs["pending"] = self.docs.index.isin(getattr(self, "pending_ids", set()))
+            self.docs["retired"] = self.docs.index.isin(list(self.retired))
             self.feedback = self.t["feedback"].set_index("doc_id")
             self.truth = self.t["ground_truth"].set_index("doc_id").states_current_value.astype(str).eq("True")
             self._index_edges()
@@ -120,7 +124,9 @@ class CoreEngine:
         e = self.edges
         dg = nx.DiGraph()
         dg.add_nodes_from(self.docs.index)
-        dg.add_edges_from(e[e.type == "LINKS_TO"][["source", "target"]].itertuples(index=False, name=None))
+        ln = e[e.type == "LINKS_TO"]
+        ln = ln[~ln.source.isin(self.retired) & ~ln.target.isin(self.retired)]               # removed documents leave the graph
+        dg.add_edges_from(ln[["source", "target"]].itertuples(index=False, name=None))
         self.doc_graph = dg
         seeds = {d: float(v) for d, v in self.docs.verified.items()}
         self.pagerank = nx.pagerank(dg)
@@ -212,7 +218,7 @@ class CoreEngine:
         f["ext_link_ratio"] = d.index.map(self.ext_ratio)
         f["superseded"] = [int(x in self.superseded_by) for x in d.index]
         kv = d.key_value
-        has = kv != ""
+        has = (kv != "") & ~d.retired
         sup = f["superseded"] == 1
         dd = d[has].assign(sup=sup[has].values)
         keyc = ["topic_id", "country", "client"]

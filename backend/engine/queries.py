@@ -133,12 +133,12 @@ class QueryMixin:
         if d.doc_id in self.approver:
             out.append((1, f"Verified by {self.persons.name[self.approver[d.doc_id]]} (higher in the hierarchy)"))
         for o in self.superseded_by.get(d.doc_id, []):
-            out.append((-1, f"Replaced by {o}"))
+            out.append((-1, f"Replaced by \"{self.docs.title[o]}\""))
         grp = self.groups.get((d.topic_id, d.country, d.client), [])
         diff = sorted([y for y in grp if y != d.doc_id and self.docs.key_value[y] != d.key_value],
                       key=lambda y: self.docs.last_modified[y], reverse=True)
         for o in diff[:2]:
-            out.append((-1, f"Contradicts {o}: '{d.key_value}' versus '{self.docs.key_value[o]}'"))
+            out.append((-1, f"Contradicts \"{self.docs.title[o]}\": '{d.key_value}' versus '{self.docs.key_value[o]}'"))
         if len(diff) > 2:
             out.append((-1, f"... and {len(diff) - 2} more documents state a different value"))
         if x.in_degree >= 4 and self.ml_score[d.doc_id] < 50:
@@ -211,6 +211,7 @@ class QueryMixin:
             cand = d.iloc[np.argsort(-sims)[:60]]
             cand = cand[sims[[self.row_of[i] for i in cand.index]] > 0.05]
             mode = "text"
+        cand = cand[~cand.retired]
         cand = cand[[self.can_see(user_id, r) for r in cand.itertuples()]]
         related_notes = 0
         if mode == "topic" and (cand.key_value != "").sum() >= 2:      # keep loose notes out of the main list
@@ -339,16 +340,18 @@ class QueryMixin:
     def org_overview(self):
         out = []
         people = self.persons.groupby("country").size()
-        for cc, g in self.docs.groupby(self.docs.team_id.map(self.teams.country)):
+        D = self._live()
+        for cc, g in D.groupby(D.team_id.map(self.teams.country)):
             out.append({"country": cc, "name": self.countries.name[cc], "people": int(people.get(cc, 0)),
                         "teams": int((self.teams.country == cc).sum()), **self._health(g)})
         return sorted(out, key=lambda x: x["health"] or 0)
 
     def org_departments(self):
         """Average trust per department across all countries."""
-        dep = self.docs.team_id.map(self.teams.department)
+        D = self._live()
+        dep = D.team_id.map(self.teams.department)
         out = []
-        for dept, g in self.docs.groupby(dep):
+        for dept, g in D.groupby(dep):
             out.append({"department": dept, "people": int((self.persons.department == dept).sum()),
                         "teams": int((self.teams.department == dept).sum()), **self._health(g)})
         return sorted(out, key=lambda x: x["health"] or 0)
@@ -359,7 +362,7 @@ class QueryMixin:
         if getattr(self, "_validation_cache", None) and self._validation_cache[0] == len(self.docs):
             return self._validation_cache[1]
         from sklearn.metrics import roc_auc_score
-        d = self.docs
+        d = self._live()
         lab = d.index.intersection(self.oof.index).intersection(self.truth.index)
         trust = 0.85 * 100 * (1 - self.oof.reindex(lab)) + 0.15 * 100 * self.author_exp.reindex(lab)
         truth = self.truth.reindex(lab)
@@ -388,8 +391,9 @@ class QueryMixin:
         return out
 
     def org_country(self, cc):
-        tc = self.docs.team_id.map(self.teams.country)
-        dd = self.docs[tc == cc]
+        D = self._live()
+        tc = D.team_id.map(self.teams.country)
+        dd = D[tc == cc]
         out = []
         for dept, g in dd.groupby(dd.team_id.map(self.teams.department)):
             out.append({"department": dept, "teams": int(((self.teams.country == cc) & (self.teams.department == dept)).sum()),
@@ -400,13 +404,15 @@ class QueryMixin:
         t = self.teams[(self.teams.country == cc) & (self.teams.department == dept)]
         out = []
         for tid in t.team_id:
-            g = self.docs[self.docs.team_id == tid]
+            D = self._live()
+            g = D[D.team_id == tid]
             out.append({"team_id": tid, "name": t.name[tid], "lead": self.person_card(t.lead_id[tid]) if t.lead_id[tid] else None,
                         "people": len(self.team_people.get(tid, [])), **self._health(g)})
         return {"country": cc, "department": dept, "teams": sorted(out, key=lambda x: x["health"] or 0)}
 
     def org_team(self, tid):
-        g = self.docs[self.docs.team_id == tid]
+        D = self._live()
+        g = D[D.team_id == tid]
         worst = g.assign(t=self.trust[g.index]).sort_values("t").head(8)
         return {"team_id": tid, "name": self.teams.name[tid],
                 "lead": self.person_card(self.teams.lead_id[tid]) if self.teams.lead_id[tid] else None,

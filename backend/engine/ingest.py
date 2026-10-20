@@ -21,7 +21,7 @@ class IngestMixin:
         self.approvals = {}
         self.notifications = []
         self.resolutions = {}                 # intent key -> {("person"|"doc", id): {...}}
-        self.policy = {"auto": True, "min_new_docs": 100, "max_days": 7, "min_gap_hours": 24}
+        self.policy = {"auto_cleanup": True, "auto": True, "min_new_docs": 100, "max_days": 7, "min_gap_hours": 24}
         self.new_since_train = 0
         self.last_train = REFERENCE_DATE - pd.Timedelta(days=2)
         self.retrain_log = []
@@ -63,6 +63,8 @@ class IngestMixin:
             tkey = f"{topic}|{client}"
             idx = self.topic_rows.get(tkey, np.array([], dtype=int))
             sims = (vec @ self.X[idx].T).toarray().ravel() if len(idx) else np.array([])
+            if len(sims):
+                sims = np.where(self.docs.retired.values[idx], 0.0, sims)               # removed documents are not duplicates
             if len(sims) and not is_meeting:
                 j = int(np.argmax(sims))
                 twin = self.docs.index[idx[j]]
@@ -80,7 +82,7 @@ class IngestMixin:
                    "acl": payload.get("acl") or ("client:" + client if client else "all"), "text": text,
                    "folder": str(payload.get("folder") or ""),
                    "link": str(payload.get("link") or make_link(source, self.teams.name.get(a.team_id, ""), did, a["name"])),
-                   "edited": False, "pending": False}
+                   "edited": False, "pending": False, "retired": False}
             grp = self.groups.get((topic, country, client), [])
             diff = [y for y in grp if key_value and self.docs.key_value[y] != key_value and y not in self.superseded_by]
             f = {"age_days": 0, "no_owner": 0, "no_dept": 0, "owner_inactive": 0, "n_reviewers": 0,
@@ -122,7 +124,7 @@ class IngestMixin:
                 diff, verified_conflict = [], []
             if verified_conflict:
                 y = verified_conflict[0]
-                why.append(f"Contradicts verified document {y}: '{key_value}' versus '{self.docs.key_value[y]}'")
+                why.append(f"Contradicts the verified document \"{self.docs.title[y]}\": '{key_value}' versus '{self.docs.key_value[y]}'")
             if abs(p - 0.5) < UNSURE and not is_meeting:
                 why.append("The model is unsure about this document")
             if classified and classified["confidence"] < TOPIC_CONF:
@@ -157,7 +159,7 @@ class IngestMixin:
 
     def approval_json(self, a):
         d = self.docs.loc[a["doc_id"]]
-        return {**a, "approver": self.person_card(a["requested_from"]), "author": self.person_card(d.author_id),
+        return {**a, "kind": a.get("kind", "approval"), "approver": self.person_card(a["requested_from"]), "author": self.person_card(d.author_id),
                 "document": {"doc_id": d.doc_id, "title": d.title, "key_value": d.key_value, "source": d.source,
                              "topic_name": self.topics.name.get(d.topic_id, d.topic_id), "country": d.country,
                              "trust": round(float(self.trust[d.doc_id]), 1), "badge": badge(float(self.trust[d.doc_id])),
@@ -176,6 +178,8 @@ class IngestMixin:
                 raise PermissionError("only the assigned approver can decide")
             if a["status"] != "pending":
                 raise ValueError("already decided")
+            if a.get("kind") == "review":
+                return self.decide_review(a, user_id, decision)
             if decision not in ("approve", "reject"):
                 raise ValueError("decision must be approve or reject")
             did = a["doc_id"]
@@ -199,6 +203,10 @@ class IngestMixin:
                     self.edges = pd.concat([self.edges, pd.DataFrame([(did, y, "SUPERSEDES", 1)], columns=self.edges.columns)], ignore_index=True)
                 self.F.loc[did, "conflict_share"] = 0.0
                 self._rescore(old + [did])
+                if self.policy.get("auto_cleanup", True):               # the replaced document leaves Graphlas at once
+                    for y in old:
+                        self.retire(y, "superseded", user_id, did, refresh=False)
+                    self._refresh_groups()
             else:
                 v["flag"] += 2
                 self.extra_labels[did] = 1
@@ -348,6 +356,7 @@ class IngestMixin:
                 "min_gap_hours": p["min_gap_hours"], "last_trained": str(self.last_train.date()),
                 "rule": "A new document or a material edit counts as 1. Cosmetic edits and duplicates count as 0. "
                         "Retrain at the threshold or after max_days, never twice within the minimum gap.",
+                "auto_cleanup": bool(p.get("auto_cleanup", True)), "last_cleanup": self.stats.get("last_cleanup"),
                 "log": self.retrain_log[-5:], "model_auc_cv": round(self.cv_auc, 3),
                 "n_labels": self.n_labels}
 
@@ -368,9 +377,12 @@ class IngestMixin:
             self.new_since_train = 0
             self.last_train = REFERENCE_DATE
             self.last_train_wall = pd.Timestamp.now()
+            swept = self.cleanup() if self.policy.get("auto_cleanup", True) else None
             self.retrain_log.append({"reason": reason, "seconds": secs, "auc_before": round(auc0, 3),
                                      "auc_after": round(self.cv_auc, 3), "documents": int(len(self.docs)),
-                                     "scores_changed_over_5_points": int((changed > 5).sum())})
+                                     "scores_changed_over_5_points": int((changed > 5).sum()),
+                                     "cleanup": None if swept is None else {"superseded": len(swept["superseded"]), "orphans": len(swept["orphans"]),
+                                                                            "reviews_opened": swept["reviews_opened"]}})
             return self.retrain_log[-1]
 
     def set_policy(self, user_id=None, **kw):

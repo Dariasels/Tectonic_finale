@@ -62,6 +62,13 @@ Each result shows only: the **person to ask** (`holder`: the owner, else the aut
 ```
 `reasons[].sign`: +1 good, -1 bad, 0 info. `ask_expert` is true when nothing in scope scores 45 or more.
 
+## 4c. Automatic clean-up
+Graphlas keeps links and metadata, never the file, so "removing" only hides a document in Graphlas (soft delete, logged, restorable); the file stays in its tool.
+- **Replaced:** a document leaves as soon as its newer version is **verified** (also directly when an approval is given). Incoming links are redirected to the new one.
+- **Orphans:** no incoming links (from documents that stay), nobody who contributed is still here, never verified, older than a year. The only document left on a subject is never removed: it goes to a person.
+- **Very low score** (below 20): never removed automatically. Sent to **the team lead** of the owning team (not the whole team, never the author), at most 5 open reviews per lead; the lead answers "remove" or "keep" (keep = verified by the lead, not offered again for 180 days).
+- Runs after each retraining (switchable) and on demand (technical people). Endpoints: `POST /api/cleanup/run` (`dry_run` previews), `GET /api/cleanup/log` (team leads: own team; technical: all), `POST /api/cleanup/{doc_id}/restore`; reviews appear in `GET /api/approvals` with `kind: "review"` and are answered with `keep` or `remove` on `POST /api/approvals/{id}/decision`.
+
 ## 4a. Who may see what
 Search, approvals, connected tools, organisation health and the score explanation (`/api/validation`) are for everyone. **Model & scale, Live capture, retraining and reset** are limited, on the server too, to the system admin, executives (CEO) and higher management (country leads, department heads): `GET /api/access?user_id=` says whether the current user may; the others answer 403.
 

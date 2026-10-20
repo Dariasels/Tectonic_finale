@@ -4,7 +4,7 @@ Run everything: `cd backend && .venv/bin/python -m pytest tests -q` (about 80 s,
 `.venv/bin/python -m scripts.check_questions` (about 2.5 min, writes `docs/QUESTION_CHECK.md`).
 All data is simulated, so these tests prove the pipeline and the rules, not real-world accuracy.
 
-## What is tested (88 tests)
+## What is tested (106 tests)
 **Data (`tests/test_data.py`)**: sizes; unique ids; every person reaches the country lead (one per country); every reference
 (author, team, topic, customer, tool, link) resolves; every document about a customer is customer-scoped (no leak); every edge type
 connects the right kinds of nodes; one author edge per document; nobody approves their own work and the approver is above the author;
@@ -32,6 +32,8 @@ retraining only for higher management and the system admin; signing up (join a t
 signed-up people survive a retrain; health per department and per country; the score validation (top answer 92% vs 83% newest, 42% most linked, 59% random; green 98%, red 20%).
 
 **Answers (`tests/test_answers.py`)**: every result names a colleague who still works here; a departed owner is replaced by the closest colleague with an explanation; "where" is plain words and never a link (and matches the real tool and team); folders are read from the path of a saved file; company emails are unique and well formed; contact details appear only on click (never in search results) and not for people who left; signed-up people get an email; the reasons and model signals behind each score are kept.
+
+**Clean-up (`tests/test_cleanup.py`)**: a preview changes nothing; a replaced document leaves only when its successor is verified; links are redirected; orphans follow every rule (no links, nobody left who contributed, unverified, older than a year) and young, linked, verified or looked-after documents stay; the only document on a subject goes to a person, not the bin; very low scores go to one named team lead, never the author, at most 5 each, never removed automatically; keep makes it verified and it is not offered again; remove is logged; removed documents vanish from search, health and conflict checks; restore needs the team lead or a technical person; the log is limited to team leads and technical people; verifying a new version removes the old one at once; retraining runs the clean-up when it is on; repeated sweeps settle.
 
 **HTTP (`tests/test_api.py`)**: validation (ids, lengths, limits), unknown users, hostile input, no upload endpoint, link scheme checks,
 403 for hidden documents and wrong approvers, profile rules, question list.

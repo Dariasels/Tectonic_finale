@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, ChevronDown, ChevronUp, FileText, Flag, MapPin, Search as SearchIcon, ShieldCheck, ThumbsUp, UserCheck, Users } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, FileText, Flag, Mail, MapPin, Search as SearchIcon, ShieldCheck, ThumbsUp, UserCheck, Users } from 'lucide-react'
 import { api, errText } from '../api'
 import { useUser } from '../user'
 import PersonDialog from '../PersonDialog'
@@ -42,7 +42,7 @@ function ResultCard({ r, user, intent, onChanged, onPerson }) {
         <div className="min-w-0 space-y-1">
           {h ? (
             <p>
-              <button onClick={() => onPerson(h.person_id)} className="text-lg font-extrabold text-accent hover:underline">{h.name}</button>
+              <button onClick={() => onPerson(h.person_id)} title="Click for contact details" className="inline-flex items-center gap-1.5 text-lg font-extrabold text-accent hover:underline">{h.name}<Mail className="h-4 w-4" aria-hidden="true" /></button>
               <span className="ml-2 text-sm text-muted">{h.role}, {h.country}</span>
             </p>
           ) : <p className="text-lg font-extrabold">No colleague to ask</p>}
@@ -248,7 +248,7 @@ export default function Search() {
               {data.intent.topic_name && <Chip>Topic: {data.intent.topic_name}</Chip>}
               {data.intent.country && <Chip>Country: {data.intent.country}{data.intent.country_defaulted ? ' (your country)' : ''}</Chip>}
               {data.intent.client_name && <Chip>Customer: {data.intent.client_name}</Chip>}
-              <span>{data.results.length} results in {data.timings_ms} ms{data.related_notes ? `, ${data.related_notes} loose notes hidden` : ''}</span>
+              <span>Click a name for contact details and the company email. {data.results.length} results in {data.timings_ms} ms{data.related_notes ? `, ${data.related_notes} loose notes hidden` : ''}</span>
             </div>
             {data.did_you_mean?.length > 0 && (
               <div className="rounded-xl bg-soft p-3 text-sm text-main">

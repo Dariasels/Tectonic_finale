@@ -60,7 +60,12 @@ class Vote(BaseModel):
 
 class Decision(BaseModel):
     user_id: str = Field(pattern=r"^P\d{5}$")
-    decision: str = Field(pattern="^(approve|reject)$")
+    decision: str = Field(pattern="^(approve|reject|keep|remove)$")
+
+
+class CleanupRun(BaseModel):
+    user_id: str = Field(pattern=r"^P\d{5}$")
+    dry_run: bool = False
 
 
 class Resolution(BaseModel):
@@ -118,6 +123,7 @@ class Actor(BaseModel):
 
 class Policy(BaseModel):
     user_id: str = Field(pattern=r"^P\d{5}$")
+    auto_cleanup: Optional[bool] = None
     auto: Optional[bool] = None
     min_new_docs: Optional[int] = Field(default=None, ge=1, le=10000)
     max_days: Optional[int] = Field(default=None, ge=1, le=90)
@@ -251,6 +257,27 @@ def model_retrain(b: Actor):
 @app.post("/api/model/settings")
 def model_settings(b: Policy):
     return call(eng().set_policy, **b.model_dump())
+
+
+@app.post("/api/cleanup/run")
+def cleanup_run(b: CleanupRun):
+    """Sweep now: replaced and orphaned documents leave Graphlas, very low scores go to the team lead."""
+    require_technical(b.user_id)
+    r = eng().cleanup(run_by=b.user_id, dry_run=b.dry_run)
+    return {"superseded": len(r["superseded"]), "orphans": len(r["orphans"]), "protected": len(r["protected"]),
+            "reviews_opened": r["reviews_opened"], "reviews_waiting": r["reviews_waiting"], "dry_run": r["dry_run"],
+            "examples": [eng().docs.title[i] for i in (r["superseded"] + r["orphans"])[:5]],
+            "note": "Removing only hides a document in Graphlas. The file itself stays in its tool."}
+
+
+@app.get("/api/cleanup/log")
+def cleanup_log(user_id: str = UID):
+    return call(eng().cleanup_log, user_id)
+
+
+@app.post("/api/cleanup/{doc_id}/restore")
+def cleanup_restore(doc_id: str, b: Actor):
+    return call(eng().restore, doc_id, b.user_id)
 
 
 @app.get("/api/validation")

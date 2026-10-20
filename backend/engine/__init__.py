@@ -1,3 +1,4 @@
+from .cleanup import CleanupMixin
 from .core import CoreEngine, badge, _read
 from .heroes import inject_heroes
 from .ingest import IngestMixin
@@ -5,7 +6,7 @@ from .queries import QueryMixin
 from .tools import ToolsMixin
 
 
-class TrustEngine(ToolsMixin, IngestMixin, QueryMixin, CoreEngine):
+class TrustEngine(CleanupMixin, ToolsMixin, IngestMixin, QueryMixin, CoreEngine):
     def __init__(self):
         from .seed_org import DATA_DIR, main as generate
         if not (DATA_DIR / "documents.csv").exists():      # data is git-ignored: create the simulated data on first start

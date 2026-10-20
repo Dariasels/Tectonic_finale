@@ -205,7 +205,7 @@ def test_conflicting_document_needs_the_approver_above_the_author(mut, ids):
     assert res["status"] == "pending_approval"
     ap = res["approval"]
     assert ap["requested_from"] == mut.above(h["hr_senior"]) != h["hr_senior"]
-    assert any("verified document H001" in r for r in ap["reasons"])
+    assert any("verified document" in r and mut.docs.title["H001"] in r for r in ap["reasons"])
     with pytest.raises(PermissionError):
         mut.decide(ap["approval_id"], h["hr_senior"], "approve")        # nobody approves their own work
     old_before = mut.trust["H001"]
